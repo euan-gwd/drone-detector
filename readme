@@ -30,7 +30,7 @@ npm run dev
 npm run build
 ```
 
-## MVP Features Included
+## Current Features
 
 - Left navigation shell
 - Central dark OpenLayers map
@@ -39,8 +39,41 @@ npm run build
 	- Flight plan approval card
 	- Drone status details
 	- Notification feed
-- Flight action buttons (mocked async actions)
+- Per-drone flight workflow controls
 - Connection state indicator
+
+## Flight Workflow (Per Drone)
+
+Flight actions are tied to the currently selected drone on the map.
+
+1. Select a drone marker.
+2. If plan status is `pending` or `actionrequired`, primary action is `Request approval`.
+3. After approval, status becomes `approved` and controls allow `Takeoff`/`Land`.
+4. You can cycle `Takeoff` and `Land` as many times as needed while plan remains approved.
+5. `End plan` resets status back to `pending` (must be landed first).
+
+## Approval Statuses
+
+- `approved`: plan is valid and flight actions are allowed.
+- `pending`: approval is required before flight.
+- `actionrequired`: invalid action attempted (for example takeoff without approved plan).
+- `rejected`: type is supported, currently not used by the mock workflow.
+
+## Map And Status Color Rules
+
+- Drone selection is shown with a larger marker outline.
+- Plan status can override marker color:
+	- `pending` -> orange marker
+	- `actionrequired` -> red marker
+- Default marker colors still follow drone status when no plan override applies.
+
+## Landed State Persistence
+
+- Control commands are persisted per drone (`zustand` persist middleware).
+- `Land` forces drone to `offline` and freezes movement.
+- While landed, incoming telemetry cannot change lat/lon and speed/altitude stay at `0`.
+- `Takeoff` returns control state to active flight (`online`).
+- Any `pending` plan starts in landed state.
 
 ## Environment
 
