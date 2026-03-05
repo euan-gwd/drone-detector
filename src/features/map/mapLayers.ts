@@ -2,8 +2,9 @@ import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
 import VectorSource from "ol/source/Vector";
 import { fromLonLat } from "ol/proj";
-import { Circle as CircleStyle, Fill, Stroke, Style } from "ol/style";
+import { Icon, Style } from "ol/style";
 import type { Drone, FlightApproval } from "../../types/drone";
+import { createDroneIconSvg, svgToDataUrl } from "./droneIcon";
 
 const markerStyle = (
   status: Drone["status"],
@@ -20,11 +21,16 @@ const markerStyle = (
     fillColor = "#ef4444";
   }
 
+  const svg = createDroneIconSvg(fillColor, selected);
+  const dataUrl = svgToDataUrl(svg);
+
   return new Style({
-    image: new CircleStyle({
-      radius: selected ? 8 : 6,
-      fill: new Fill({ color: fillColor }),
-      stroke: new Stroke({ color: "#f8fafc", width: selected ? 2.5 : 1.5 })
+    image: new Icon({
+      src: dataUrl,
+      scale: 1,
+      anchor: [0.5, 0.5],
+      anchorXUnits: 'fraction',
+      anchorYUnits: 'fraction'
     })
   });
 };
