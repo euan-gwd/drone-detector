@@ -4,7 +4,7 @@
 
 Drone Detector is a modern React 19 dashboard app that renders a live drone operations view using OpenLayers for mapping, Tailwind CSS for styling, and a WebSocket-style real-time data flow.
 
-**[Live Demo →](#)** | **[Deployment Guide](DEPLOYMENT.md)**
+**[Live Demo →](#)**
 
 ## Stack
 
@@ -52,10 +52,6 @@ npm run build
 ## Deployment
 
 This project is ready to deploy to Netlify, Vercel, or similar platforms.
-
-### Quick Deploy to Netlify
-
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy)
 
 For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
@@ -130,4 +126,4 @@ Current implementation uses a local simulator stream for fast UI development.
 
 ## Screenshot
 
-![Drone Detector Dashboard](Screenshot.png)
+![Drone Detector Dashboard](screenshot.png)

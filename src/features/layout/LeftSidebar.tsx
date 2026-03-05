@@ -3,7 +3,7 @@ const sections = [
   { title: "Flyer", items: ["Add a flyer", "Manage flyers"] },
   { title: "Aircraft", items: ["Add an aircraft", "Manage aircraft"] },
   { title: "Organisation", items: ["Add an organisation", "Manage organisation"] },
-  { title: "Flight", items: [] }
+  // { title: "Flight", items: [] }
 ];
 
 function LeftSidebar(): JSX.Element {
