@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useOptimistic } from "react";
 import { useDroneStore } from "../../store/droneStore";
 import { useFlightStore } from "../../store/flightStore";
+import type { FlightApproval } from "../../types/drone";
 
 function badgeClass(status: string): string {
   if (status === "pending") {
@@ -30,8 +31,17 @@ function FlightApprovalPanel(): JSX.Element {
     return approvals.find((approval) => approval.aircraftId === selectedDroneId) ?? null;
   }, [approvals, selectedDroneId]);
 
+  // Optimistic updates for instant feedback
+  const [optimisticApproval, setOptimisticApproval] = useOptimistic(
+    matchedApproval,
+    (state, update: Partial<FlightApproval>) => {
+      if (!state) return null;
+      return { ...state, ...update };
+    }
+  );
+
   const current =
-    matchedApproval ??
+    optimisticApproval ??
     (selectedDroneId
       ? {
           id: "Not Requested",
@@ -101,6 +111,10 @@ function FlightApprovalPanel(): JSX.Element {
           type="button"
           onClick={() => {
             if (selectedDroneId) {
+              if (needsApproval) {
+                // Optimistically show approval before async action completes
+                setOptimisticApproval({ status: "approved" });
+              }
               void runAction(selectedDroneId, needsApproval ? "request-approval" : "land");
             }
           }}

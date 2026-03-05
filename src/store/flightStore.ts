@@ -30,22 +30,59 @@ const upsertApproval = (
   return [next, ...approvals];
 };
 
-export const useFlightStore = create<FlightStore>((set, get) => ({
-  approvals: [],
-  busyAction: null,
-  seedApprovals: (items) => {
-    const setControlStatus = useDroneStore.getState().setControlStatus;
-    const updateDroneStatus = useDroneStore.getState().updateDroneStatus;
-
-    items.forEach((item) => {
-      if (item.status === "pending") {
-        setControlStatus(item.aircraftId, "offline");
-        updateDroneStatus(item.aircraftId, "offline");
-      }
-    });
-
-    set({ approvals: items });
+const INITIAL_APPROVALS: FlightApproval[] = [
+  {
+    id: "860404",
+    aircraftId: "drn-102",
+    status: "approved",
+    startedAt: new Date().toISOString(),
+    planStartedAt: new Date(Date.now() + 1000 * 60 * 30).toISOString(),
+    comments: "None"
   },
+  {
+    id: "860405",
+    aircraftId: "drn-304",
+    status: "approved",
+    startedAt: new Date().toISOString(),
+    planStartedAt: new Date(Date.now() + 1000 * 60 * 45).toISOString(),
+    comments: "Low altitude corridor"
+  },
+  {
+    id: "860406",
+    aircraftId: "drn-401",
+    status: "pending",
+    startedAt: new Date().toISOString(),
+    planStartedAt: new Date(Date.now() + 1000 * 60 * 50).toISOString(),
+    comments: "Awaiting tower acknowledgment"
+  }
+];
+
+export const useFlightStore = create<FlightStore>((set, get) => {
+  // Initialize pending drones as offline
+  INITIAL_APPROVALS.forEach((item) => {
+    if (item.status === "pending") {
+      const { setControlStatus, updateDroneStatus } = useDroneStore.getState();
+      setControlStatus(item.aircraftId, "offline");
+      updateDroneStatus(item.aircraftId, "offline");
+    }
+  });
+
+  return {
+    approvals: INITIAL_APPROVALS,
+    busyAction: null,
+    seedApprovals: (items) => {
+      const setControlStatus = useDroneStore.getState().setControlStatus;
+      const updateDroneStatus = useDroneStore.getState().updateDroneStatus;
+
+      items.forEach((item) => {
+        if (item.status === "pending") {
+          setControlStatus(item.aircraftId, "offline");
+          updateDroneStatus(item.aircraftId, "offline");
+        }
+      });
+
+      set({ approvals: items });
+    },
   runAction: async (droneId, action) => {
     set({ busyAction: action });
     await wait(900);
@@ -205,5 +242,6 @@ export const useFlightStore = create<FlightStore>((set, get) => ({
     });
 
     set({ busyAction: null });
-  }
-}));
+    }
+  };
+});

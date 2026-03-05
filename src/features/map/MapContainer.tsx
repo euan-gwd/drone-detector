@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useTransition } from "react";
 import Map from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
@@ -20,6 +20,7 @@ function MapContainer(): JSX.Element {
   const selectedDroneId = useDroneStore((state) => state.selectedDroneId);
   const selectDrone = useDroneStore((state) => state.selectDrone);
   const approvals = useFlightStore((state) => state.approvals);
+  const [, startTransition] = useTransition();
 
   const approvalStatusByDrone = useMemo(() => {
     return approvals.reduce<Record<string, (typeof approvals)[number]["status"]>>((acc, item) => {
@@ -60,7 +61,10 @@ function MapContainer(): JSX.Element {
         selectedId = feature.get("droneId") ?? null;
       });
 
-      selectDrone(selectedId);
+      // Mark as non-urgent to keep map interactions responsive
+      startTransition(() => {
+        selectDrone(selectedId);
+      });
     });
 
     mapInstanceRef.current = map;
