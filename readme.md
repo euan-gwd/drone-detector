@@ -1,4 +1,4 @@
-# Drone Detector
+# Drone Detector POC
 
 > 🚁 Real-time drone tracking and flight management dashboard
 
