@@ -1,4 +1,4 @@
-import { useMemo, useOptimistic } from "react";
+import { useMemo, useOptimistic, type JSX } from "react";
 import { useDroneStore } from "../../store/droneStore";
 import { useFlightStore } from "../../store/flightStore";
 import type { FlightApproval } from "../../types/drone";

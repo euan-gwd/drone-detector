@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { useUiStore } from "../../store/uiStore";
 import DroneStatusPanel from "../panels/DroneStatusPanel";
 import FlightApprovalPanel from "../panels/FlightApprovalPanel";

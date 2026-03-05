@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { useNotificationStore } from "../../store/notificationStore";
 
 function levelClass(level: string): string {

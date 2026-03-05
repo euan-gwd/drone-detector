@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 const sections = [
   { title: "Home", items: [] },
   { title: "Flyer", items: ["Add a flyer", "Manage flyers"] },

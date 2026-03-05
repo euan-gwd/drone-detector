@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import LeftSidebar from "./features/layout/LeftSidebar";
 import RightRail from "./features/layout/RightRail";
 import MapContainer from "./features/map/MapContainer";
