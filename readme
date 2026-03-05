@@ -1,0 +1,68 @@
+# Drone Detector
+
+Drone Detector is a React 19 dashboard app that renders a live drone operations view using OpenLayers for mapping, Tailwind CSS for styling, and a WebSocket-style real-time data flow.
+
+## Stack
+
+- React 19 + TypeScript
+- Vite
+- OpenLayers
+- Zustand
+- Tailwind CSS
+
+## Run Locally
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Start dev server:
+
+```bash
+npm run dev
+```
+
+3. Build production bundle:
+
+```bash
+npm run build
+```
+
+## MVP Features Included
+
+- Left navigation shell
+- Central dark OpenLayers map
+- Live moving drone markers from mock socket stream
+- Right status rail with:
+	- Flight plan approval card
+	- Drone status details
+	- Notification feed
+- Flight action buttons (mocked async actions)
+- Connection state indicator
+
+## Environment
+
+Copy `.env.example` values into `.env` as needed:
+
+- `VITE_WS_MODE=mock`
+- `VITE_WS_URL=ws://localhost:8080`
+
+Current implementation uses a local simulator stream for fast UI development.
+
+## Event Envelope (Proposed)
+
+```ts
+{
+	version: 1,
+	type: "drone.position" | "drone.status" | "notification.created" | "connection.state",
+	timestamp: string,
+	payload: object
+}
+```
+
+## Layout Notes
+
+- Desktop: left nav + center map + right rail
+- Mobile/tablet: center map stacks above right rail
