@@ -3,11 +3,22 @@ import Point from "ol/geom/Point";
 import VectorSource from "ol/source/Vector";
 import { fromLonLat } from "ol/proj";
 import { Circle as CircleStyle, Fill, Stroke, Style } from "ol/style";
-import type { Drone } from "../../types/drone";
+import type { Drone, FlightApproval } from "../../types/drone";
 
-const markerStyle = (status: Drone["status"], selected: boolean): Style => {
-  const fillColor =
-    status === "warning" ? "#f59e0b" : status === "offline" ? "#ef4444" : "#38bdf8";
+const markerStyle = (
+  status: Drone["status"],
+  selected: boolean,
+  approvalStatus?: FlightApproval["status"]
+): Style => {
+  let fillColor = status === "warning" ? "#f59e0b" : status === "offline" ? "#ef4444" : "#38bdf8";
+
+  if (approvalStatus === "pending") {
+    fillColor = "#f59e0b";
+  }
+
+  if (approvalStatus === "actionrequired") {
+    fillColor = "#ef4444";
+  }
 
   return new Style({
     image: new CircleStyle({
@@ -23,7 +34,8 @@ const featureId = (droneId: string) => `drone-${droneId}`;
 export const syncDroneFeatures = (
   source: VectorSource,
   drones: Record<string, Drone>,
-  selectedDroneId: string | null
+  selectedDroneId: string | null,
+  approvalStatusByDrone: Record<string, FlightApproval["status"]>
 ): void => {
   const incomingIds = new Set(Object.keys(drones));
 
@@ -39,6 +51,7 @@ export const syncDroneFeatures = (
     const id = featureId(drone.id);
     const coordinate = fromLonLat([drone.lon, drone.lat]);
     const selected = selectedDroneId === drone.id;
+    const approvalStatus = approvalStatusByDrone[drone.id];
     const existing = source.getFeatureById(id);
 
     if (!existing) {
@@ -47,7 +60,7 @@ export const syncDroneFeatures = (
         droneId: drone.id
       });
       feature.setId(id);
-      feature.setStyle(markerStyle(drone.status, selected));
+      feature.setStyle(markerStyle(drone.status, selected, approvalStatus));
       source.addFeature(feature);
       return;
     }
@@ -56,6 +69,6 @@ export const syncDroneFeatures = (
     if (geometry instanceof Point) {
       geometry.setCoordinates(coordinate);
     }
-    existing.setStyle(markerStyle(drone.status, selected));
+    existing.setStyle(markerStyle(drone.status, selected, approvalStatus));
   });
 };

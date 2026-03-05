@@ -15,7 +15,7 @@ export interface Drone {
 export interface FlightApproval {
   id: string;
   aircraftId: string;
-  status: "approved" | "pending" | "rejected";
+  status: "approved" | "pending" | "actionrequired" | "rejected";
   startedAt: string;
   planStartedAt: string;
   comments: string;

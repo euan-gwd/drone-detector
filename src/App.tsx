@@ -14,11 +14,27 @@ function App(): JSX.Element {
     seedApprovals([
       {
         id: "860404",
-        aircraftId: "B8994E",
+        aircraftId: "drn-102",
         status: "approved",
         startedAt: new Date().toISOString(),
         planStartedAt: new Date(Date.now() + 1000 * 60 * 30).toISOString(),
         comments: "None"
+      },
+      {
+        id: "860405",
+        aircraftId: "drn-304",
+        status: "approved",
+        startedAt: new Date().toISOString(),
+        planStartedAt: new Date(Date.now() + 1000 * 60 * 45).toISOString(),
+        comments: "Low altitude corridor"
+      },
+      {
+        id: "860406",
+        aircraftId: "drn-401",
+        status: "pending",
+        startedAt: new Date().toISOString(),
+        planStartedAt: new Date(Date.now() + 1000 * 60 * 50).toISOString(),
+        comments: "Awaiting tower acknowledgment"
       }
     ]);
   }, [seedApprovals]);

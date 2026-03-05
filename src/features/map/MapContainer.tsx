@@ -7,6 +7,7 @@ import VectorSource from "ol/source/Vector";
 import XYZ from "ol/source/XYZ";
 import { fromLonLat } from "ol/proj";
 import { useDroneStore } from "../../store/droneStore";
+import { useFlightStore } from "../../store/flightStore";
 import { syncDroneFeatures } from "./mapLayers";
 
 const mapCenter = fromLonLat([-0.56, 51.86]);
@@ -18,6 +19,14 @@ function MapContainer(): JSX.Element {
   const drones = useDroneStore((state) => state.drones);
   const selectedDroneId = useDroneStore((state) => state.selectedDroneId);
   const selectDrone = useDroneStore((state) => state.selectDrone);
+  const approvals = useFlightStore((state) => state.approvals);
+
+  const approvalStatusByDrone = useMemo(() => {
+    return approvals.reduce<Record<string, (typeof approvals)[number]["status"]>>((acc, item) => {
+      acc[item.aircraftId] = item.status;
+      return acc;
+    }, {});
+  }, [approvals]);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) {
@@ -63,8 +72,8 @@ function MapContainer(): JSX.Element {
   }, [droneLayerSource, selectDrone]);
 
   useEffect(() => {
-    syncDroneFeatures(droneLayerSource, drones, selectedDroneId);
-  }, [droneLayerSource, drones, selectedDroneId]);
+    syncDroneFeatures(droneLayerSource, drones, selectedDroneId, approvalStatusByDrone);
+  }, [droneLayerSource, drones, selectedDroneId, approvalStatusByDrone]);
 
   return <div ref={mapRef} className="h-full w-full" aria-label="Live drone map" />;
 }
