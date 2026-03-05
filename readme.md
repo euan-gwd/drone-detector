@@ -4,7 +4,7 @@
 
 Drone Detector is a modern React 19 dashboard app that renders a live drone operations view using OpenLayers for mapping, Tailwind CSS for styling, and a WebSocket-style real-time data flow.
 
-**[Live Demo →](#)**
+**[Live Demo →](https://dronedetect.netlify.app/)**
 
 ## Stack
 
