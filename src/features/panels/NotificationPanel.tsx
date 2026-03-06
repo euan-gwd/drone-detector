@@ -1,25 +1,39 @@
 import { useState, type JSX } from 'react';
 import { useNotificationStore } from "../../store/notificationStore";
+import { notificationLevelClass } from "../../utils/statusColors";
 
-function levelClass(level: string): string {
-  if (level === "warning") {
-    return "text-amber-300";
+/**
+ * Renders the body of a notification, highlighting the drone name in cyan.
+ *
+ * Preferred path: if the notification carries structured `droneName` and `droneId`
+ * fields, those are rendered directly — no string parsing required.
+ *
+ * Legacy fallback: notifications created before the structured fields were added
+ * embed the drone identifier in the message string as "Name (id) rest…".
+ * The regex extracts those parts so the name can still be highlighted.
+ */
+function FormattedMessage({
+  message,
+  droneName,
+  droneId
+}: {
+  message: string;
+  droneName?: string;
+  droneId?: string;
+}): JSX.Element {
+  // Preferred: use the typed fields when both are present
+  if (droneName && droneId) {
+    return (
+      <p className="mt-1 text-slate-300">
+        <span className="font-medium text-mapGlow">{droneName}</span>{" "}
+        ({droneId}){" "}{message}
+      </p>
+    );
   }
-  if (level === "error") {
-    return "text-rose-300";
-  }
-  if (level === "success") {
-    return "text-emerald-300";
-  }
-  if (level === "info") {
-    return "text-sky-300";
-  }
-  return "text-slate-200";
-}
 
-// Colours only the drone name; ID and remainder stay in default text colour.
-// Expected message format: "Drone Name (drn-xxx) rest of message"
-function FormattedMessage({ message }: { message: string }): JSX.Element {
+  // Legacy fallback: parse "Drone Name (drn-xxx) rest of message" with a regex.
+  // This handles any notification that was created before droneName/droneId
+  // were added to NotificationItem — remove once all producers are updated.
   const match = /^([^(]+?)\s(\([^)]+\))\s(.+)$/.exec(message);
   if (match) {
     const [, name, id, rest] = match;
@@ -29,6 +43,7 @@ function FormattedMessage({ message }: { message: string }): JSX.Element {
       </p>
     );
   }
+
   return <p className="mt-1 text-slate-300">{message}</p>;
 }
 
@@ -79,8 +94,8 @@ function NotificationPanel(): JSX.Element {
                     <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
                   </svg>
                 </button>
-                <p className={`font-semibold ${levelClass(item.level)}`}>{item.title}</p>
-                <FormattedMessage message={item.message} />
+                  <p className={`font-semibold ${notificationLevelClass(item.level)}`}>{item.title}</p>
+                  <FormattedMessage message={item.message} droneName={item.droneName} droneId={item.droneId} />
                 <p className="mt-1 text-[10px] uppercase tracking-wide text-slate-500">
                   {new Date(item.createdAt).toLocaleTimeString()}
                 </p>

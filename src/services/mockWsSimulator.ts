@@ -37,26 +37,33 @@ const baseDrones: Drone[] = [
   }
 ];
 
+// Small random lat/lon offset per tick; 0.0026° ≈ 200 m at UK latitudes
 const drift = () => (Math.random() - 0.5) * 0.0026;
 
+/**
+ * Builds a NotificationItem for a drone event.
+ *
+ * The `droneName` and `droneId` fields are set so the notification panel can
+ * highlight the drone name without needing to parse the message string.
+ * The `message` field contains only the descriptive text (no drone prefix).
+ */
 const makeNotification = (drone: Drone, level: NotificationItem["level"]): NotificationItem => {
-  const label = `${drone.name} (${drone.id})`;
   const messages: Record<NotificationItem["level"], { title: string; message: string }> = {
     warning: {
       title: "Speed caution",
-      message: `${label} has entered the caution speed band at ${drone.speedMps.toFixed(1)} m/s`
+      message: `has entered the caution speed band at ${drone.speedMps.toFixed(1)} m/s`
     },
     info: {
       title: "Flight update",
-      message: `${label} flight plan remains approved and active`
+      message: "flight plan remains approved and active"
     },
     success: {
       title: "Status nominal",
-      message: `${label} has returned to normal operating parameters`
+      message: "has returned to normal operating parameters"
     },
     error: {
       title: "Flight error",
-      message: `${label} reported an unexpected error — review required`
+      message: "reported an unexpected error — review required"
     }
   };
 
@@ -65,21 +72,37 @@ const makeNotification = (drone: Drone, level: NotificationItem["level"]): Notif
     level,
     title: messages[level].title,
     message: messages[level].message,
+    // Structured fields let the UI highlight the drone name without regex parsing
+    droneName: drone.name,
+    droneId: drone.id,
     createdAt: new Date().toISOString()
   };
 };
 
+/**
+ * Produces one batch of WebSocket events for a single simulator tick.
+ *
+ * Each call moves every drone slightly and may append one notification event.
+ * Calling this function produces different results each time (stochastic) —
+ * this is intentional for UI development. For deterministic testing, replace
+ * `createMockEventBatch` with a seeded version.
+ */
 export const createMockEventBatch = (previous: Drone[]): DroneSocketEvent[] => {
   const updated = previous.map((drone) => {
+    // Speed changes by up to ±1.05 m/s per tick; minimum hover speed is 3 m/s
     const nextSpeed = Math.max(3, drone.speedMps + (Math.random() - 0.5) * 2.1);
     return {
       ...drone,
+      // Max position jitter ≈ 200 m per tick (0.0026° ≈ 200 m at UK latitudes)
       lat: drone.lat + drift(),
       lon: drone.lon + drift(),
+      // Altitude drifts by up to ±2 m per tick; floor at 20 m AGL
       altitudeM: Math.max(20, drone.altitudeM + Math.round((Math.random() - 0.5) * 4)),
       speedMps: Number(nextSpeed.toFixed(1)),
+      // Heading drifts by up to ±9° per tick; wraps around at 360°
       headingDeg: Math.round((drone.headingDeg + (Math.random() - 0.5) * 18 + 360) % 360),
       updatedAt: new Date().toISOString(),
+      // Speeds above 13.6 m/s trigger the caution (warning) status
       status: nextSpeed > 13.6 ? "warning" : "online"
     } as Drone;
   });
@@ -91,6 +114,7 @@ export const createMockEventBatch = (previous: Drone[]): DroneSocketEvent[] => {
     payload: { drone }
   }));
 
+  // 28% chance of generating one notification per tick (≈ 1 notification every 4 s at 1.2 s tick)
   if (Math.random() > 0.72) {
     // Pick a random drone to associate the notification with
     const triggeringDrone = updated[Math.floor(Math.random() * updated.length)];

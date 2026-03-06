@@ -3,10 +3,28 @@ import type { FlightApproval } from "../types/drone";
 import { useDroneStore } from "./droneStore";
 import { useNotificationStore } from "./notificationStore";
 
+/**
+ * The set of actions a user can trigger for a drone's flight lifecycle.
+ *
+ * | Action             | Precondition                                    | Effect                                          |
+ * |--------------------|------------------------------------------------|--------------------------------------------------|
+ * | "request-approval" | plan is "pending" or "actionrequired"          | Sets plan to "approved"; drone ready for takeoff |
+ * | "takeoff"          | plan is "approved", drone is landed (offline)  | Sets drone control status to "online"            |
+ * | "land"             | plan is "approved", drone is airborne          | Sets drone control status to "offline"           |
+ * | "end-plan"         | plan is "approved", drone is landed (offline)  | Resets plan to "pending"                         |
+ * | "view"             | any state                                       | No-op — used as a placeholder                   |
+ */
 type FlightAction = "view" | "request-approval" | "end-plan" | "land" | "takeoff";
 
 interface FlightStore {
   approvals: FlightApproval[];
+  /**
+   * The action string that is currently being processed, or `null` when idle.
+   * Set at the start of `runAction` and cleared when the action resolves.
+   * This prevents the user from triggering concurrent conflicting commands
+   * on the same drone while a previous command is still in-flight (e.g. awaiting
+   * the simulated network delay).
+   */
   busyAction: string | null;
   seedApprovals: (items: FlightApproval[]) => void;
   runAction: (droneId: string, action: FlightAction) => Promise<void>;
@@ -70,6 +88,11 @@ export const useFlightStore = create<FlightStore>((set, get) => {
   return {
     approvals: INITIAL_APPROVALS,
     busyAction: null,
+    /**
+     * Replaces the current approval list and forces any "pending" drones
+     * offline so their map markers and status are correct from the start.
+     * Call this when loading approvals from a real backend.
+     */
     seedApprovals: (items) => {
       const setControlStatus = useDroneStore.getState().setControlStatus;
       const updateDroneStatus = useDroneStore.getState().updateDroneStatus;
@@ -85,8 +108,12 @@ export const useFlightStore = create<FlightStore>((set, get) => {
     },
   runAction: async (droneId, action) => {
     set({ busyAction: action });
+    // Simulate network round-trip latency (900 ms)
     await wait(900);
 
+    // Read current state from sibling stores.
+    // We use .getState() (not React hooks) because this function runs outside
+    // the React render cycle — calling a hook here would violate React's rules.
     const droneState = useDroneStore.getState();
     const updateDroneStatus = droneState.updateDroneStatus;
     const setControlStatus = droneState.setControlStatus;
@@ -94,6 +121,8 @@ export const useFlightStore = create<FlightStore>((set, get) => {
     const addNotification = useNotificationStore.getState().addNotification;
     const approval = get().approvals.find((item) => item.aircraftId === droneId);
 
+    // ── request-approval ──────────────────────────────────────────────────
+    // Creates or updates the approval record to "approved" status and notifies.
     if (action === "request-approval") {
       const now = new Date();
       set((state) => ({
@@ -111,7 +140,9 @@ export const useFlightStore = create<FlightStore>((set, get) => {
         id: `action-${crypto.randomUUID()}`,
         level: "success",
         title: "Flight plan approved",
-        message: `${droneId} is approved and ready for takeoff.`,
+        droneName: drone?.name,
+        droneId: droneId,
+        message: "approved and ready for takeoff.",
         createdAt: new Date().toISOString()
       });
 
@@ -119,6 +150,9 @@ export const useFlightStore = create<FlightStore>((set, get) => {
       return;
     }
 
+    // ── guard: ensure a plan record exists ──────────────────────────────────
+    // If no approval record exists at all, create a stub so the UI always has
+    // something to display, then let the action-specific guard below handle it.
     if (!approval) {
       set((state) => ({
         approvals: upsertApproval(state.approvals, droneId, () => ({
@@ -134,6 +168,7 @@ export const useFlightStore = create<FlightStore>((set, get) => {
       updateDroneStatus(droneId, "offline");
     }
 
+    // ── guard: takeoff/land require an approved plan ─────────────────────────
     if ((action === "takeoff" || action === "land") && approval?.status !== "approved") {
       set((state) => ({
         approvals: upsertApproval(state.approvals, droneId, (current) => ({
@@ -150,23 +185,33 @@ export const useFlightStore = create<FlightStore>((set, get) => {
         id: `action-${crypto.randomUUID()}`,
         level: "warning",
         title: "Action blocked",
-        message: `${droneId} needs an approved flight plan first.`,
+        droneName: drone?.name,
+        droneId: droneId,
+        message: "needs an approved flight plan before takeoff or landing.",
         createdAt: new Date().toISOString()
       });
       set({ busyAction: null });
       return;
     }
 
+    // ── land ──────────────────────────────────────────────────────────────────
+    // Sets the control override to "offline" — droneStore will freeze position
+    // and zero speed/altitude on every subsequent telemetry update.
     if (action === "land") {
       setControlStatus(droneId, "offline");
       updateDroneStatus(droneId, "offline");
     }
 
+    // ── takeoff ───────────────────────────────────────────────────────────────
+    // Clears the "offline" control override so the drone resumes live movement.
     if (action === "takeoff") {
       setControlStatus(droneId, "online");
       updateDroneStatus(droneId, "online");
     }
 
+    // ── end-plan ──────────────────────────────────────────────────────────────
+    // Resets the plan back to "pending" and lands the drone.
+    // Blocked if the plan is not approved, or if the drone is still airborne.
     if (action === "end-plan") {
       if (approval?.status !== "approved") {
         set((state) => ({
@@ -184,7 +229,9 @@ export const useFlightStore = create<FlightStore>((set, get) => {
           id: `action-${crypto.randomUUID()}`,
           level: "warning",
           title: "No active plan",
-          message: `${droneId} does not have an approved plan to end.`,
+          droneName: drone?.name,
+          droneId: droneId,
+          message: "does not have an approved plan to end.",
           createdAt: new Date().toISOString()
         });
         set({ busyAction: null });
@@ -207,7 +254,9 @@ export const useFlightStore = create<FlightStore>((set, get) => {
           id: `action-${crypto.randomUUID()}`,
           level: "warning",
           title: "Action blocked",
-          message: `${droneId} must be landed before ending the plan.`,
+          droneName: drone?.name,
+          droneId: droneId,
+          message: "must be landed before ending the plan.",
           createdAt: new Date().toISOString()
         });
         set({ busyAction: null });
@@ -235,9 +284,11 @@ export const useFlightStore = create<FlightStore>((set, get) => {
       id: `action-${crypto.randomUUID()}`,
       level: "info",
       title: `Drone action: ${actionLabel}`,
+      droneName: drone?.name,
+      droneId: droneId,
       message: approval
-        ? `${droneId} command executed for plan ${approval.id}.`
-        : `${droneId} command executed.`,
+        ? `command executed for plan ${approval.id}.`
+        : "command executed.",
       createdAt: new Date().toISOString()
     });
 

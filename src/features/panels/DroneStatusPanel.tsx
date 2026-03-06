@@ -1,5 +1,6 @@
 import { useState, useMemo, type JSX } from "react";
 import { useDroneStore } from "../../store/droneStore";
+import { droneStatusColor } from "../../utils/statusColors";
 
 function DroneStatusPanel(): JSX.Element {
   const [open, setOpen] = useState(true);
@@ -66,7 +67,7 @@ function DroneStatusPanel(): JSX.Element {
               </div>
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-slate-300">Status</span>
-                <span className={selected.status === "warning" ? "text-amber-300" : selected.status === "offline" ? "text-slate-300" : "text-success"}>
+                <span className={droneStatusColor(selected.status)}>
                   {selected.status.charAt(0).toUpperCase() + selected.status.slice(1)}
                 </span>
               </div>

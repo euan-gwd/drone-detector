@@ -3,13 +3,7 @@ import type { ReactNode } from "react";
 import { useDroneStore } from "../../store/droneStore";
 import { useFlightStore } from "../../store/flightStore";
 import type { FlightApproval } from "../../types/drone";
-
-function statusColor(status: string): string {
-  if (status === "approved") return "text-success";
-  if (status === "pending") return "text-amber-300";
-  if (status === "actionrequired") return "text-rose-300";
-  return "text-slate-400";
-}
+import { flightApprovalStatusColor } from "../../utils/statusColors";
 
 function Row({ label, value }: { label: string; value: ReactNode }): JSX.Element {
   return (
@@ -67,6 +61,11 @@ function FlightApprovalPanel(): JSX.Element {
     return approvals.find((a) => a.aircraftId === selectedDroneId) ?? null;
   }, [approvals, selectedDroneId]);
 
+  // React 19 optimistic hook: mirrors `matchedApproval` but applies instant
+  // local updates while the real async `runAction` call is in-flight.
+  // Example: clicking "Request Approval" immediately shows "approved" status
+  // in the UI rather than waiting 900 ms for the simulated network delay.
+  // React reconciles this with the real store value on the next render.
   const [optimisticApproval, setOptimisticApproval] = useOptimistic(
     matchedApproval,
     (state, update: Partial<FlightApproval>) => (state ? { ...state, ...update } : null)
@@ -86,13 +85,22 @@ function FlightApprovalPanel(): JSX.Element {
         }
       : null);
 
+  // ── Derived state: encodes the full flight state machine for the UI ────────
+  // These booleans are the single source of truth for what buttons are enabled
+  // or visible. Nothing in the JSX below makes its own eligibility decisions.
   const isBusy = busyAction !== null;
+  // Disable all actions while a command is processing or no drone is selected
   const actionsDisabled = isBusy || !selectedDroneId;
   const isApproved = current?.status === "approved";
+  // true when operator must request approval before any flight action is allowed
   const needsApproval = current?.status === "pending" || current?.status === "actionrequired";
+  // true when the drone is not landed (status !== "offline")
   const isAirborne = selectedDrone !== null && selectedDrone.status !== "offline";
+  // Land is available only once airborne AND the plan is approved
   const canLand = isApproved && isAirborne;
+  // Takeoff is available only when on the ground AND the plan is approved
   const canTakeoff = isApproved && selectedDrone !== null && !isAirborne;
+  // End Flight is available whenever the drone is on the ground (doesn't require approval)
   const canEndFlight = !!selectedDroneId && !isAirborne;
 
   const flightStatus = selectedDrone?.status === "offline" ? "Landed" : selectedDrone ? "In flight" : "—";
@@ -124,7 +132,7 @@ function FlightApprovalPanel(): JSX.Element {
                   <div key={plan.id} className="rounded border border-slate-700 bg-slate-800/40 px-3 py-2 space-y-1">
                     <Row label="Flight Plan:" value={plan.id} />
                     <Row label="Aircraft:" value={plan.aircraftId} />
-                    <Row label="Status:" value={<span className={statusColor(plan.status)}>{plan.status}</span>} />
+                    <Row label="Status:" value={<span className={flightApprovalStatusColor(plan.status)}>{plan.status}</span>} />
                     <Row label="Plan Start:" value={new Date(plan.planStartedAt).toLocaleString()} />
                     <Row label="Plan End:" value={planEndTime.toLocaleString()} />
                     {plan.comments && (
@@ -153,7 +161,7 @@ function FlightApprovalPanel(): JSX.Element {
                 <Row label="Aircraft is:" value={current.aircraftId} />
                 <Row
                   label="Flight Approval Status:"
-                  value={<span className={statusColor(current.status)}>{current.status.charAt(0).toUpperCase() + current.status.slice(1)}</span>}
+                  value={<span className={flightApprovalStatusColor(current.status)}>{current.status.charAt(0).toUpperCase() + current.status.slice(1)}</span>}
                 />
                 <Row label="Flight Status:" value={flightStatus} />
                 <Row label="Flight Started:" value={hasStarted ? new Date(current.startedAt).toLocaleString() : "Not started"} />
@@ -161,7 +169,11 @@ function FlightApprovalPanel(): JSX.Element {
               <p className="mt-3 text-xs font-semibold text-slate-300">Comments from the authority</p>
               <p className="mt-0.5 text-xs text-slate-400">{current.comments}</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                {/* Button 1: context-sensitive primary action */}
+                {/* Button 1: context-sensitive primary action
+                    - Shows "Request Approval" when plan is pending/actionrequired
+                    - Shows "Land"            when airborne and plan is approved
+                    - Shows "Take Off"        when grounded and plan is approved
+                    - Disabled when none of those states apply */}
                 <button
                   type="button"
                   onClick={() => {
@@ -184,7 +196,9 @@ function FlightApprovalPanel(): JSX.Element {
                 >
                   {needsApproval ? "Request Approval" : canLand ? "Land" : "Take Off"}
                 </button>
-                {/* Button 2: End Flight — always shown, disabled when airborne */}
+                {/* Button 2: End Flight — always visible, disabled while airborne.
+                    Resets the plan to "pending" so the operator must request
+                    approval again before the next flight. */}
                 <button
                   type="button"
                   onClick={() => {
