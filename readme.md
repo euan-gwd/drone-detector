@@ -1,161 +1,335 @@
 # Drone Detector POC
 
-> 🚁 Real-time drone tracking and flight management dashboard
+> Real-time drone tracking and flight management dashboard
 
-Drone Detector is a modern React 19 dashboard app that renders a live drone operations view using OpenLayers for mapping, Tailwind CSS for styling, and a WebSocket-style real-time data flow.
+Drone Detector is a React 19 SPA that renders a live drone operations view using OpenLayers for mapping, Zustand for state management, and a mock WebSocket simulator that can be swapped for a real backend via environment variables.
 
 **[Live Demo →](https://dronedetect.netlify.app/)**
 
+---
+
 ## Stack
 
-- React 19 + TypeScript
-- Vite
-- OpenLayers
-- Zustand
-- Tailwind CSS
+| Layer | Library | Version |
+|---|---|---|
+| UI | React + TypeScript | 19 / 5.9 |
+| Build | Vite | 7.1 |
+| State | Zustand | 5.0 |
+| Mapping | OpenLayers | 10.6 |
+| Styling | Tailwind CSS + PostCSS | 3.4 / 8.5 |
+| Testing | Vitest + Testing Library | 3.2 |
+| Deploy | Netlify | — |
+
+---
 
 ## Run Locally
 
-1. Install dependencies:
-
 ```bash
 npm install
-```
-
-2. Start dev server:
-
-```bash
 npm run dev
 ```
 
-3. Build production bundle:
+Build for production:
 
 ```bash
 npm run build
 ```
 
-## Current Features
+Run tests:
 
-- Left navigation shell
-- Central dark OpenLayers map
-- Live moving drone markers from mock socket stream
-- Right status rail with four collapsible panels (each has a green header bar with chevron toggle):
-	- **Drone Status** — shows a summary of active drones when no drone is selected; shows live telemetry (name, ID, speed, altitude, heading, status) for the selected drone
-	- **Flight Plan Approvals** — always shows all flight plans as scrollable cards (plan ID, aircraft, status, start/end times, comments); not drone-specific
-	- **Flight Approval(s)** — drone-specific; shows approval status, flight status, and action buttons for the selected drone
-	- **Notifications** — collapsible feed with a live count badge in the header
-- Per-drone flight workflow controls
-- Connection state indicator
+```bash
+npm test
+```
 
-## Right Rail Panels
+---
 
-All four panels in the right rail share a consistent collapsible design — a dark green header bar with an icon, title, and a rotating chevron. Click the header to collapse or expand the panel.
+## Project Structure
 
-### Drone Status
+```
+src/
+  App.tsx                      # Root layout, mounts WebSocket hook
+  main.tsx                     # React 19 entry point
+  components/
+    ErrorBoundary.tsx          # Catches map errors, shows reload prompt
+  features/
+    layout/
+      LeftSidebar.tsx          # Navigation shell (desktop only)
+      RightRail.tsx            # Right panel container + connection badge
+    map/
+      MapContainer.tsx         # OpenLayers init, click handler, feature sync
+      mapLayers.ts             # Drone feature sync + marker colour logic
+      droneIcon.ts             # SVG drone icon generator (data-URL)
+    panels/
+      DroneStatusPanel.tsx     # Telemetry display for selected drone
+      FlightApprovalPanel.tsx  # Full flight workflow UI
+      NotificationPanel.tsx    # Live notification feed
+  hooks/
+    useDroneWebSocket.ts       # Routes WebSocket events to Zustand stores
+  services/
+    websocketClient.ts         # DroneSocketClient pub/sub event hub
+    mockWsSimulator.ts         # Realistic tick-based drone telemetry generator
+  store/
+    droneStore.ts              # Drone positions, status, control overrides
+    flightStore.ts             # Flight approval state machine
+    notificationStore.ts       # Notification feed (max 30 items)
+    uiStore.ts                 # Connection state
+  types/
+    drone.ts                   # Drone, FlightApproval, NotificationItem types
+    websocket.ts               # Event envelope types and union
+  utils/
+    statusColors.ts            # Tailwind colour helpers for status values
+  test/
+    setup.ts                   # jest-dom matchers for Vitest
+  styles/
+    globals.css                # Tailwind directives + global resets
+```
 
-- **No drone selected**: displays the count of actively tracked drones and a prompt to select one.
-- **Drone selected**: displays live telemetry — name, ID, speed (m/s), altitude (m), heading (°), and status (Online / Warning / Offline).
-
-### Flight Plan Approvals
-
-Always displays all active flight plans regardless of drone selection. Plans are listed as scrollable cards (constrained height, ~1.5 cards visible at a time). Each card shows:
-
-- Flight Plan ID
-- Aircraft ID
-- Status (colour-coded)
-- Plan start and end times
-- Comments from the authority
-
-### Flight Approval(s)
-
-Drone-specific. Tracks the approval and flight lifecycle for the currently selected drone:
-
-- Shows `Aircraft`, `Flight Approval Status`, `Flight Status`, and `Flight Started` time.
-- **Request Approval** — available when status is `pending` or `actionrequired`.
-- **Take Off / Land** — available after approval, toggles between airborne and landed state.
-- **End Flight** — resets the approval record (drone must be landed).
-
-### Notifications
-
-Collapsible feed. The notification count is shown in the header when collapsed. Entries are colour-coded by severity (info, success, warning, error) and include a formatted message with drone name highlighted.
-
-## Flight Workflow (Per Drone)
-
-Flight actions are tied to the currently selected drone on the map.
-
-1. Select a drone marker.
-2. If plan status is `pending` or `actionrequired`, primary action is `Request Approval`.
-3. After approval, status becomes `approved` and controls allow `Take Off` / `Land`.
-4. You can cycle `Take Off` and `Land` as many times as needed while the plan remains approved.
-5. `End Flight` resets the approval record (drone must be landed first).
-
-## Deployment
-
-This project is ready to deploy to Netlify, Vercel, or similar platforms.
-
-For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
-
-### Build Configuration
-
-- Build command: `npm run build`
-- Publish directory: `dist`
-- Node version: 20+
+---
 
 ## Architecture
 
-- **State Management**: Zustand stores for drones, flights, notifications, and UI
-- **Real-time Updates**: Mock WebSocket simulator (can be replaced with real backend)
-- **Mapping**: OpenLayers with custom drone markers and tracking
-- **Styling**: Tailwind CSS with dark theme
-- **Type Safety**: Full TypeScript coverage
+### Layout
 
-## Approval Statuses
+Three-column desktop layout, stacks vertically on mobile:
 
-- `approved`: plan is valid and flight actions are allowed.
-- `pending`: approval is required before flight.
-- `actionrequired`: invalid action attempted (for example takeoff without approved plan).
-- `rejected`: type is supported, currently not used by the mock workflow.
+```
+┌─────────────┬────────────────────┬──────────────┐
+│ LeftSidebar │    MapContainer    │  RightRail   │
+│  (nav shell)│  (OpenLayers map)  │  (panels)    │
+└─────────────┴────────────────────┴──────────────┘
+```
 
-## Map And Status Color Rules
+- **LeftSidebar** — static navigation sections (Home, Flyer, Aircraft, Organisation); hidden below `lg` breakpoint.
+- **MapContainer** — CartoDB Dark tile layer, vector overlay for drone markers. Centre: Oxford, UK (51.752°N, −1.258°W), zoom 11. Click selects a drone. Uses `startTransition()` to keep interactions responsive. Wrapped in an `ErrorBoundary` so a map crash doesn't break the rest of the UI.
+- **RightRail** — stacks Drone Status, Flight Approval, and Notification panels. Shows WebSocket connection badge and a "Declare Emergency" button at the bottom.
 
-- Drone selection is shown with a larger marker outline.
-- Plan status can override marker color:
-	- `pending` -> orange marker
-	- `actionrequired` -> red marker
-- Default marker colors still follow drone status when no plan override applies.
+### State Management
 
-## Landed State Persistence
+Four independent Zustand stores. Cross-store communication uses `.getState()` in async actions (not hooks).
 
-- Control commands are persisted per drone (`zustand` persist middleware).
-- `Land` forces drone to `offline` and freezes movement.
-- While landed, incoming telemetry cannot change lat/lon and speed/altitude stay at `0`.
-- `Takeoff` returns control state to active flight (`online`).
-- Any `pending` plan starts in landed state.
+#### `droneStore`
+- `drones` — dict keyed by drone ID, updated on every WebSocket tick.
+- `selectedDroneId` — currently inspected drone.
+- `controlStatusByDrone` — per-drone operator overrides, persisted to `sessionStorage`.
+- `upsertDrone()` — merges incoming telemetry; **ignores lat/lon, speed, and altitude updates while a drone is in a landed state** to prevent telemetry overriding an operator command.
+- `setControlStatus()` — issues a land or takeoff command; immediately zeros altitude and speed on land.
+- Includes a store migration to strip stale keys from old `sessionStorage` snapshots.
 
-## Environment
+#### `flightStore`
+- `approvals` — list of `FlightApproval` records. Initial state: drn-102 approved, drn-304 approved, drn-401 pending.
+- `busyAction` — prevents concurrent commands while a simulated 900 ms network delay is in progress.
+- State machine via `runAction()`:
 
-Copy `.env.example` values into `.env` as needed:
+| Action | Transition | Side effect |
+|---|---|---|
+| `request-approval` | pending / actionrequired → approved | — |
+| `takeoff` | — | `setControlStatus("online")` |
+| `land` | — | `setControlStatus("offline")` |
+| `end-plan` | approved → pending | — |
+| `view` | — | no-op |
 
-- `VITE_WS_MODE=mock`
-- `VITE_WS_URL=ws://localhost:8080`
+#### `notificationStore`
+- Holds up to 30 notifications, newest first. No persistence; cleared on page reload.
 
-Current implementation uses a local simulator stream for fast UI development.
+#### `uiStore`
+- Single boolean `connected`, toggled by the WebSocket hook.
 
-## Event Envelope (Proposed)
+### Real-time Data Flow
+
+```
+mockWsSimulator.ts
+  └─► DroneSocketClient (pub/sub, 1.2 s tick)
+        └─► useDroneWebSocket (hook, mounted at App root)
+              ├─► droneStore.upsertDrone()
+              ├─► droneStore.updateDroneStatus()
+              ├─► notificationStore.addNotification()
+              └─► uiStore.setConnected()
+```
+
+Each tick drifts position (±200 m), speed (±1 m/s, min 3), altitude (±2 m, min 20), and heading (±9°). Status is set to `"warning"` if speed > 13.6 m/s, else `"online"`. There is a 28% chance per tick of generating a structured notification with `droneName` and `droneId` as separate fields (no regex parsing needed in the UI).
+
+To connect a real backend, set `VITE_WS_URL` (see Environment below). The hook, stores, and event schema are already structured for a live API.
+
+### WebSocket Event Envelope
 
 ```ts
 {
-	version: 1,
-	type: "drone.position" | "drone.status" | "notification.created" | "connection.state",
-	timestamp: string,
-	payload: object
+  version: 1,
+  type: "drone.position" | "drone.status" | "notification.created" | "connection.state",
+  timestamp: string,
+  payload: object
 }
 ```
 
-## Layout Notes
+---
 
-- Desktop: left nav + center map + right rail
-- Mobile/tablet: center map stacks above right rail
+## Right Rail Panels
+
+All panels share a collapsible design — dark green header bar with icon, title, and rotating chevron. Click the header to expand or collapse.
+
+### Drone Status
+
+- **No drone selected** — shows the count of actively tracked drones and a prompt to select one on the map.
+- **Drone selected** — shows live telemetry: name, ID, speed (m/s), altitude (m), heading (°), and colour-coded status.
+
+### Flight Approval
+
+Two sections in one panel:
+
+**Flight Plan Approvals** — always visible regardless of drone selection. Scrollable card list (~1.5 cards visible). Each card shows:
+- Flight Plan ID + Aircraft ID
+- Status (colour-coded)
+- Plan start/end times
+- Authority comments
+
+**Flight Approval(s)** — drone-specific workflow section showing aircraft, approval status, flight status, and started time. Uses React 19 `useOptimistic()` for instant UI feedback — the status appears to update immediately while the 900 ms simulated delay resolves in the background. All buttons are disabled while `busyAction` is set.
+
+| Condition | Available actions |
+|---|---|
+| Status `pending` or `actionrequired` | Request Approval |
+| Status `approved`, drone on the ground | Take Off |
+| Status `approved`, drone airborne | Land |
+| Drone on the ground | End Flight |
+
+### Notifications
+
+- Scrollable feed (max 300 px), newest first.
+- Each item is individually dismissable.
+- Colour-coded by level: `info` (blue), `success` (green), `warning` (amber), `error` (red).
+- Item count shown in the header when collapsed.
+- Supports structured notifications (`droneName`/`droneId` fields) with regex fallback for legacy message formats.
+
+---
+
+## Flight Workflow (Per Drone)
+
+1. Select a drone marker on the map.
+2. If plan status is `pending` or `actionrequired`, use **Request Approval**.
+3. Once approved, use **Take Off** / **Land** to toggle flight state.
+4. Repeat Take Off / Land as needed while the plan remains `approved`.
+5. **End Flight** resets the plan to `pending` (drone must be landed first).
+
+---
+
+## Map Marker Colours
+
+Flight approval status takes priority over drone telemetry status:
+
+| Condition | Colour |
+|---|---|
+| Flight plan `pending` | Amber |
+| Flight plan `actionrequired` | Red |
+| Drone status `online` | Cyan |
+| Drone status `warning` | Amber |
+| Drone status `offline` | Muted grey |
+
+Selected drone renders with a larger icon (18 px → 24 px) and a distinct outline.
+
+---
+
+## Landed State Persistence
+
+- Operator Land / Take Off commands are stored in `sessionStorage` via Zustand persist middleware, surviving page refresh.
+- While landed: incoming telemetry position, speed, and altitude are ignored — the frozen values remain on the map.
+- Take Off restores the drone to active flight (`"online"`); subsequent telemetry updates resume normally.
+- Any drone with a `pending` plan starts in a landed state.
+
+---
+
+## Type System
+
+### `src/types/drone.ts`
+
+```ts
+type DroneStatus = "online" | "warning" | "offline"
+
+interface Drone {
+  id: string; name: string;
+  lat: number; lon: number;
+  altitudeM: number; speedMps: number; headingDeg: number;
+  updatedAt: string; status: DroneStatus;
+}
+
+type FlightApprovalStatus = "approved" | "pending" | "actionrequired" | "rejected"
+
+interface FlightApproval {
+  id: string; aircraftId: string; status: FlightApprovalStatus;
+  startedAt: string | null; planStartedAt: string; comments: string;
+}
+
+type NotificationLevel = "info" | "success" | "warning" | "error"
+
+interface NotificationItem {
+  id: string; level: NotificationLevel;
+  title: string; message: string;
+  droneName?: string; droneId?: string;
+  createdAt: string;
+}
+```
+
+### `src/types/websocket.ts`
+
+Typed event envelope with a discriminated union (`DroneSocketEvent`) covering all four event types. `DroneSocketClient` is fully typed against this union.
+
+---
+
+## Status Colour Helpers
+
+`src/utils/statusColors.ts` exposes three pure functions returning Tailwind text-colour classes:
+
+- `droneStatusColor(status)` — online → cyan, warning → amber, offline → muted
+- `flightApprovalStatusColor(status)` — approved → cyan, pending → amber, actionrequired → red, rejected → muted
+- `notificationLevelClass(level)` — warning → amber, error → red, success → green, info → blue
+
+---
+
+## Error Boundary
+
+`ErrorBoundary` wraps `MapContainer`. If OpenLayers throws during render, the sidebar and right rail remain functional and the map area displays an error message with a "Reload Application" button.
+
+---
+
+## Testing
+
+Tests are co-located with source files (`*.test.ts` / `*.test.tsx`). Coverage spans stores, services, the WebSocket hook, and panels.
+
+```bash
+npm test          # watch mode
+npm run test:run  # single pass (CI)
+```
+
+Vitest runs in `jsdom` environment with globals enabled. `src/test/setup.ts` imports `@testing-library/jest-dom` for custom matchers.
+
+---
+
+## Environment Variables
+
+Create a `.env` file (copy from `.env.example`):
+
+```env
+VITE_WS_MODE=mock           # "mock" uses the local simulator
+VITE_WS_URL=ws://localhost:8080  # real backend WebSocket URL
+```
+
+Default behaviour without a `.env` file: mock simulator is used.
+
+---
+
+## Deployment
+
+Deploys to Netlify out of the box.
+
+| Setting | Value |
+|---|---|
+| Build command | `npm run build` |
+| Publish directory | `dist` |
+| Node version | 20 |
+
+SPA routing (`/*` → `/index.html`) and security headers (`X-Frame-Options: DENY`, long-lived asset caching) are pre-configured in `netlify.toml`.
+
+For step-by-step instructions see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+---
 
 ## Screenshot
 
