@@ -35,6 +35,7 @@ function FormattedMessage({ message }: { message: string }): JSX.Element {
 function NotificationPanel(): JSX.Element {
   const [open, setOpen] = useState(true);
   const items = useNotificationStore((state) => state.items);
+  const clearNotification = useNotificationStore((state) => state.clearNotification);
 
   const icon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-success">
@@ -67,7 +68,17 @@ function NotificationPanel(): JSX.Element {
             <p className="text-xs text-slate-400">No alerts yet.</p>
           ) : (
             items.map((item) => (
-              <article key={item.id} className="border-b border-slate-700 pb-2 text-xs last:border-none">
+              <article key={item.id} className="relative border-b border-slate-700 pb-2 text-xs last:border-none">
+                <button
+                  type="button"
+                  onClick={() => clearNotification(item.id)}
+                  className="absolute right-0 top-0 text-slate-500 hover:text-slate-300"
+                  aria-label="Dismiss notification"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
+                    <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+                  </svg>
+                </button>
                 <p className={`font-semibold ${levelClass(item.level)}`}>{item.title}</p>
                 <FormattedMessage message={item.message} />
                 <p className="mt-1 text-[10px] uppercase tracking-wide text-slate-500">
