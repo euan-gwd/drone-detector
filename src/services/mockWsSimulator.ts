@@ -58,7 +58,7 @@ const makeNotification = (drone: Drone, level: NotificationItem["level"]): Notif
       message: "flight plan remains approved and active"
     },
     success: {
-      title: "Status nominal",
+      title: "Flight update",
       message: "has returned to normal operating parameters"
     },
     error: {

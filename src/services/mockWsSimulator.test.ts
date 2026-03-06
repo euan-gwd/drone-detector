@@ -1,4 +1,5 @@
 import { createMockEventBatch, mockInitialDrones } from "./mockWsSimulator";
+import type { NotificationItem } from "../types/drone";
 
 describe("mockInitialDrones", () => {
   it("returns exactly 3 drones", () => {
@@ -71,5 +72,73 @@ describe("createMockEventBatch", () => {
       const original = initial[i];
       expect(updated.lat !== original.lat || updated.lon !== original.lon).toBe(true);
     });
+  });
+});
+
+describe("notification titles", () => {
+  const initial = mockInitialDrones();
+
+  // Each drone consumes 5 Math.random() calls (speed, lat, lon, altitude, heading).
+  // With 3 drones that is 15 calls before the notification check:
+  //   index 15 → notification trigger check (> 0.72 fires)
+  //   index 16 → drone selection (Math.floor(x * 3))
+  //   index 17 → level selection when drone is online (Math.floor(x * 2): 0 = info, 1 = success)
+  //
+  // drn-102 starts at 14 m/s; with neutral drift (0.5) it stays at 14 → warning status.
+  // drn-304 (11 m/s) and drn-401 (10 m/s) stay online with neutral drift.
+  function mockRandom(overrides: Record<number, number>) {
+    let callCount = 0;
+    vi.spyOn(Math, "random").mockImplementation(() => {
+      const val = overrides[callCount] ?? 0.5;
+      callCount++;
+      return val;
+    });
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function extractNotification(batch: ReturnType<typeof createMockEventBatch>): NotificationItem | null {
+    const event = batch.find((e) => e.type === "notification.created");
+    if (!event) return null;
+    return (event.payload as { notification: NotificationItem }).notification;
+  }
+
+  it("warning notifications carry title 'Speed caution'", () => {
+    // index 15 → 0.8 triggers notification; index 16 → 0.1 selects drone 0 (drn-102, warning)
+    mockRandom({ 15: 0.8, 16: 0.1 });
+    const notif = extractNotification(createMockEventBatch(initial));
+    expect(notif).not.toBeNull();
+    expect(notif!.level).toBe("warning");
+    expect(notif!.title).toBe("Speed caution");
+    expect(notif!.droneId).toBe("drn-102");
+  });
+
+  it("info notifications carry title 'Flight update'", () => {
+    // index 16 → 0.99 selects drone 2 (drn-401, online); index 17 → 0.1 → Math.floor(0.1*2)=0 → info
+    mockRandom({ 15: 0.8, 16: 0.99, 17: 0.1 });
+    const notif = extractNotification(createMockEventBatch(initial));
+    expect(notif).not.toBeNull();
+    expect(notif!.level).toBe("info");
+    expect(notif!.title).toBe("Flight update");
+  });
+
+  it("success notifications carry title 'Flight update'", () => {
+    // index 17 → 0.9 → Math.floor(0.9*2)=1 → success
+    mockRandom({ 15: 0.8, 16: 0.99, 17: 0.9 });
+    const notif = extractNotification(createMockEventBatch(initial));
+    expect(notif).not.toBeNull();
+    expect(notif!.level).toBe("success");
+    expect(notif!.title).toBe("Flight update");
+  });
+
+  it("notification events include droneName and droneId", () => {
+    mockRandom({ 15: 0.8, 16: 0.1 }); // warning from drn-102
+    const notif = extractNotification(createMockEventBatch(initial));
+    expect(notif).not.toBeNull();
+    expect(notif!.droneName).toBe("North Watcher");
+    expect(notif!.droneId).toBe("drn-102");
+    expect(notif!.createdAt).toBeTruthy();
   });
 });

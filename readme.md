@@ -102,7 +102,7 @@ Three-column desktop layout, stacks vertically on mobile:
 
 - **LeftSidebar** — static navigation sections (Home, Flyer, Aircraft, Organisation); hidden below `lg` breakpoint.
 - **MapContainer** — CartoDB Dark tile layer, vector overlay for drone markers. Centre: Oxford, UK (51.752°N, −1.258°W), zoom 11. Click selects a drone and opens a telemetry popup pinned above its icon; clicking empty map space closes it. Uses `startTransition()` to keep interactions responsive. Wrapped in an `ErrorBoundary` so a map crash doesn't break the rest of the UI.
-- **RightRail** — stacks Drone Status, Flight Approval, and Notification panels. Shows WebSocket connection badge and a "Declare Emergency" button at the bottom.
+- **RightRail** — stacks Drone Status, Flight Approval, and Notification panels. Shows WebSocket connection badge at the top.
 
 ### State Management
 
@@ -233,7 +233,7 @@ Flight approval status takes priority over drone telemetry status:
 | Flight plan `actionrequired` | Red |
 | Drone status `online` | Cyan |
 | Drone status `warning` | Amber |
-| Drone status `offline` | Muted grey |
+| Drone status `offline` | Red |
 
 Selected drone renders with a larger icon (18 px → 24 px) and a distinct outline.
 
