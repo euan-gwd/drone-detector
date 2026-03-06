@@ -11,7 +11,7 @@ const sections = [
 function LeftSidebar(): JSX.Element {
   return (
     <aside className="hidden h-full w-72 border-r border-slate-700 bg-surface px-4 py-6 lg:block">
-      <div className="mb-8 text-xs uppercase tracking-[0.18em] text-slate-400">Drone Detector</div>
+      <div className="mb-8 text-xs uppercase tracking-[0.18em] text-slate-400">Drone Detect</div>
       <nav className="space-y-5 text-sm text-slate-100">
         {sections.map((section) => (
           <div key={section.title} className="border-b border-slate-700 pb-4 last:border-none">
