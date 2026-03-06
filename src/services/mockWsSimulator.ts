@@ -39,17 +39,32 @@ const baseDrones: Drone[] = [
 
 const drift = () => (Math.random() - 0.5) * 0.0026;
 
-const randomNotification = (): NotificationItem => {
-  const levels: NotificationItem["level"][] = ["success", "info", "warning"];
-  const level = levels[Math.floor(Math.random() * levels.length)];
+const makeNotification = (drone: Drone, level: NotificationItem["level"]): NotificationItem => {
+  const label = `${drone.name} (${drone.id})`;
+  const messages: Record<NotificationItem["level"], { title: string; message: string }> = {
+    warning: {
+      title: "Speed caution",
+      message: `${label} has entered the caution speed band at ${drone.speedMps.toFixed(1)} m/s`
+    },
+    info: {
+      title: "Flight update",
+      message: `${label} flight plan remains approved and active`
+    },
+    success: {
+      title: "Status nominal",
+      message: `${label} has returned to normal operating parameters`
+    },
+    error: {
+      title: "Flight error",
+      message: `${label} reported an unexpected error — review required`
+    }
+  };
+
   return {
     id: `notif-${crypto.randomUUID()}`,
     level,
-    title: level === "warning" ? "Flight attention" : "Flight update",
-    message:
-      level === "warning"
-        ? "One drone entered caution speed band"
-        : "Flight plan remains approved and active",
+    title: messages[level].title,
+    message: messages[level].message,
     createdAt: new Date().toISOString()
   };
 };
@@ -77,11 +92,17 @@ export const createMockEventBatch = (previous: Drone[]): DroneSocketEvent[] => {
   }));
 
   if (Math.random() > 0.72) {
+    // Pick a random drone to associate the notification with
+    const triggeringDrone = updated[Math.floor(Math.random() * updated.length)];
+    const level = triggeringDrone.status === "warning"
+      ? "warning"
+      : (["info", "success"] as NotificationItem["level"][])[Math.floor(Math.random() * 2)];
+
     events.push({
       version: 1,
       type: "notification.created",
       timestamp: new Date().toISOString(),
-      payload: { notification: randomNotification() }
+      payload: { notification: makeNotification(triggeringDrone, level) }
     });
   }
 

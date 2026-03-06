@@ -39,15 +39,55 @@ npm run build
 - Left navigation shell
 - Central dark OpenLayers map
 - Live moving drone markers from mock socket stream
-- Right status rail with:
-	- Flight plan approval card
-	- Drone status details
-	- Notification feed
+- Right status rail with four collapsible panels (each has a green header bar with chevron toggle):
+	- **Drone Status** — shows a summary of active drones when no drone is selected; shows live telemetry (name, ID, speed, altitude, heading, status) for the selected drone
+	- **Flight Plan Approvals** — always shows all flight plans as scrollable cards (plan ID, aircraft, status, start/end times, comments); not drone-specific
+	- **Flight Approval(s)** — drone-specific; shows approval status, flight status, and action buttons for the selected drone
+	- **Notifications** — collapsible feed with a live count badge in the header
 - Per-drone flight workflow controls
 - Connection state indicator
 
+## Right Rail Panels
+
+All four panels in the right rail share a consistent collapsible design — a dark green header bar with an icon, title, and a rotating chevron. Click the header to collapse or expand the panel.
+
+### Drone Status
+
+- **No drone selected**: displays the count of actively tracked drones and a prompt to select one.
+- **Drone selected**: displays live telemetry — name, ID, speed (m/s), altitude (m), heading (°), and status (Online / Warning / Offline).
+
+### Flight Plan Approvals
+
+Always displays all active flight plans regardless of drone selection. Plans are listed as scrollable cards (constrained height, ~1.5 cards visible at a time). Each card shows:
+
+- Flight Plan ID
+- Aircraft ID
+- Status (colour-coded)
+- Plan start and end times
+- Comments from the authority
+
+### Flight Approval(s)
+
+Drone-specific. Tracks the approval and flight lifecycle for the currently selected drone:
+
+- Shows `Aircraft`, `Flight Approval Status`, `Flight Status`, and `Flight Started` time.
+- **Request Approval** — available when status is `pending` or `actionrequired`.
+- **Take Off / Land** — available after approval, toggles between airborne and landed state.
+- **End Flight** — resets the approval record (drone must be landed).
+
+### Notifications
+
+Collapsible feed. The notification count is shown in the header when collapsed. Entries are colour-coded by severity (info, success, warning, error) and include a formatted message with drone name highlighted.
+
 ## Flight Workflow (Per Drone)
 
+Flight actions are tied to the currently selected drone on the map.
+
+1. Select a drone marker.
+2. If plan status is `pending` or `actionrequired`, primary action is `Request Approval`.
+3. After approval, status becomes `approved` and controls allow `Take Off` / `Land`.
+4. You can cycle `Take Off` and `Land` as many times as needed while the plan remains approved.
+5. `End Flight` resets the approval record (drone must be landed first).
 
 ## Deployment
 
@@ -68,13 +108,6 @@ For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 - **Mapping**: OpenLayers with custom drone markers and tracking
 - **Styling**: Tailwind CSS with dark theme
 - **Type Safety**: Full TypeScript coverage
-Flight actions are tied to the currently selected drone on the map.
-
-1. Select a drone marker.
-2. If plan status is `pending` or `actionrequired`, primary action is `Request approval`.
-3. After approval, status becomes `approved` and controls allow `Takeoff`/`Land`.
-4. You can cycle `Takeoff` and `Land` as many times as needed while plan remains approved.
-5. `End plan` resets status back to `pending` (must be landed first).
 
 ## Approval Statuses
 

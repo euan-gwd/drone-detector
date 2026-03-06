@@ -41,8 +41,7 @@ export const useDroneStore = create<DroneStore>()(
             drones: {
               ...state.drones,
               [drone.id]: nextDrone
-            },
-            selectedDroneId: state.selectedDroneId ?? drone.id
+            }
           };
         }),
       updateDroneStatus: (id, status) =>
@@ -93,8 +92,13 @@ export const useDroneStore = create<DroneStore>()(
     }),
     {
       name: "drone-control-store",
+      version: 1,
+      migrate: (persisted) => {
+        const state = persisted as Record<string, unknown>;
+        delete state.selectedDroneId;
+        return state;
+      },
       partialize: (state) => ({
-        selectedDroneId: state.selectedDroneId,
         controlStatusByDrone: state.controlStatusByDrone
       })
     }
