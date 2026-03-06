@@ -93,7 +93,6 @@ function FlightApprovalPanel(): JSX.Element {
   const isAirborne = selectedDrone !== null && selectedDrone.status !== "offline";
   const canLand = isApproved && isAirborne;
   const canTakeoff = isApproved && selectedDrone !== null && !isAirborne;
-  const canEndPlan = !!matchedApproval && selectedDrone !== null && !isAirborne;
   const canEndFlight = !!selectedDroneId && !isAirborne;
 
   const flightStatus = selectedDrone?.status === "offline" ? "Landed" : selectedDrone ? "In flight" : "—";
