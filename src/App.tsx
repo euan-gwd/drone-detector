@@ -16,7 +16,6 @@ function App(): JSX.Element {
           <ErrorBoundary>
             <MapContainer />
           </ErrorBoundary>
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(30,201,255,0.1),transparent_45%)]" />
         </main>
         <RightRail />
       </div>
