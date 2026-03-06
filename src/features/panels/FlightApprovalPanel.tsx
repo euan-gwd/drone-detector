@@ -1,4 +1,4 @@
-import { useState, useMemo, useOptimistic, type JSX } from "react";
+import { useState, useOptimistic, type JSX } from "react";
 import type { ReactNode } from "react";
 import { useDroneStore } from "../../store/droneStore";
 import { useFlightStore } from "../../store/flightStore";
@@ -56,10 +56,10 @@ function FlightApprovalPanel(): JSX.Element {
   const runAction = useFlightStore((state) => state.runAction);
 
   const selectedDrone = selectedDroneId ? drones[selectedDroneId] ?? null : null;
-  const matchedApproval = useMemo(() => {
-    if (!selectedDroneId) return null;
-    return approvals.find((a) => a.aircraftId === selectedDroneId) ?? null;
-  }, [approvals, selectedDroneId]);
+  // React Compiler automatically memoises this — no useMemo() needed.
+  const matchedApproval = selectedDroneId
+    ? (approvals.find((a) => a.aircraftId === selectedDroneId) ?? null)
+    : null;
 
   // React 19 optimistic hook: mirrors `matchedApproval` but applies instant
   // local updates while the real async `runAction` call is in-flight.

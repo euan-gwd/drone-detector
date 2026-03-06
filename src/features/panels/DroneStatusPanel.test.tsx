@@ -3,6 +3,16 @@ import DroneStatusPanel from "./DroneStatusPanel";
 import { useDroneStore } from "../../store/droneStore";
 import type { Drone } from "../../types/drone";
 
+// ── Notes on DroneStatusPanel behaviour ───────────────────────────────────
+//
+// Since the map popup now handles per-drone telemetry detail, this panel has
+// been simplified to a status overview only. It always shows:
+//   • A count of active (non-offline) drones
+//   • A prompt directing the user to click a drone on the map
+//
+// Selected drone name, speed, altitude, heading, and status are no longer
+// rendered here — see DronePopup.tsx and DronePopup.test.tsx for those tests.
+
 const makeDrone = (id: string, overrides?: Partial<Drone>): Drone => ({
   id,
   name: "Test Drone",
@@ -18,7 +28,7 @@ const makeDrone = (id: string, overrides?: Partial<Drone>): Drone => ({
 
 describe("DroneStatusPanel", () => {
   beforeEach(() => {
-    sessionStorage.clear();
+    // Only drones is used by this panel; reset to a clean slate each test.
     useDroneStore.setState({ drones: {}, selectedDroneId: null, controlStatusByDrone: {} });
   });
 
@@ -27,7 +37,7 @@ describe("DroneStatusPanel", () => {
     expect(screen.getByText("Drone Status")).toBeInTheDocument();
   });
 
-  it("shows active drone count when no drone is selected", () => {
+  it("shows active drone count", () => {
     useDroneStore.setState({
       drones: {
         "drn-1": makeDrone("drn-1", { status: "online" }),
@@ -36,7 +46,7 @@ describe("DroneStatusPanel", () => {
       },
     });
     render(<DroneStatusPanel />);
-    // 2 active (online + warning), 1 offline
+    // 2 active (online + warning), 1 offline — offline drones are excluded
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText(/active drone/)).toBeInTheDocument();
   });
@@ -47,47 +57,29 @@ describe("DroneStatusPanel", () => {
     });
     render(<DroneStatusPanel />);
     expect(screen.getByText(/active drone tracked/)).toBeInTheDocument();
-    // Should NOT contain the plural form "drones"
     expect(screen.queryByText(/active drones tracked/)).not.toBeInTheDocument();
   });
 
-  it("shows a prompt to select a drone when none is selected", () => {
+  it("shows a prompt directing the user to the map", () => {
+    // The prompt is always visible (drone selection detail is shown in the
+    // map popup, not here), so this holds regardless of selectedDroneId.
     render(<DroneStatusPanel />);
     expect(screen.getByText(/Select a drone/)).toBeInTheDocument();
   });
 
-  it("renders selected drone details", () => {
+  it("collapses the body when the header is clicked", () => {
     useDroneStore.setState({
-      drones: {
-        "drn-1": makeDrone("drn-1", { name: "Sky Eye", speedMps: 15, altitudeM: 200, headingDeg: 270 }),
-      },
-      selectedDroneId: "drn-1",
+      drones: { "drn-1": makeDrone("drn-1") },
     });
     render(<DroneStatusPanel />);
-    expect(screen.getByText("Sky Eye")).toBeInTheDocument();
-    expect(screen.getByText("drn-1")).toBeInTheDocument();
-    expect(screen.getByText("15 m/s")).toBeInTheDocument();
-    expect(screen.getByText("200 m")).toBeInTheDocument();
-    expect(screen.getByText("270°")).toBeInTheDocument();
-  });
+    // Confirm the prompt is visible before collapsing
+    expect(screen.getByText(/Select a drone/)).toBeInTheDocument();
 
-  it("capitalises the drone status in the detail view", () => {
-    useDroneStore.setState({
-      drones: { "drn-1": makeDrone("drn-1", { status: "warning" }) },
-      selectedDroneId: "drn-1",
-    });
-    render(<DroneStatusPanel />);
-    expect(screen.getByText("Warning")).toBeInTheDocument();
-  });
-
-  it("collapses when the header is clicked", () => {
-    useDroneStore.setState({
-      drones: { "drn-1": makeDrone("drn-1", { name: "Hidden Drone" }) },
-      selectedDroneId: "drn-1",
-    });
-    render(<DroneStatusPanel />);
     fireEvent.click(screen.getByText("Drone Status"));
-    expect(screen.queryByText("Hidden Drone")).not.toBeInTheDocument();
+
+    // Both the count and the prompt should be hidden after collapse
+    expect(screen.queryByText(/active drone/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Select a drone/)).not.toBeInTheDocument();
   });
 
   it("re-expands after being collapsed", () => {

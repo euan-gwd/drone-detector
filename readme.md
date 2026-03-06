@@ -56,7 +56,8 @@ src/
       LeftSidebar.tsx          # Navigation shell (desktop only)
       RightRail.tsx            # Right panel container + connection badge
     map/
-      MapContainer.tsx         # OpenLayers init, click handler, feature sync
+      MapContainer.tsx         # OpenLayers init, click handler, overlay, feature sync
+      DronePopup.tsx           # Map-anchored popup card (shown on drone click)
       mapLayers.ts             # Drone feature sync + marker colour logic
       droneIcon.ts             # SVG drone icon generator (data-URL)
     panels/
@@ -100,7 +101,7 @@ Three-column desktop layout, stacks vertically on mobile:
 ```
 
 - **LeftSidebar** — static navigation sections (Home, Flyer, Aircraft, Organisation); hidden below `lg` breakpoint.
-- **MapContainer** — CartoDB Dark tile layer, vector overlay for drone markers. Centre: Oxford, UK (51.752°N, −1.258°W), zoom 11. Click selects a drone. Uses `startTransition()` to keep interactions responsive. Wrapped in an `ErrorBoundary` so a map crash doesn't break the rest of the UI.
+- **MapContainer** — CartoDB Dark tile layer, vector overlay for drone markers. Centre: Oxford, UK (51.752°N, −1.258°W), zoom 11. Click selects a drone and opens a telemetry popup pinned above its icon; clicking empty map space closes it. Uses `startTransition()` to keep interactions responsive. Wrapped in an `ErrorBoundary` so a map crash doesn't break the rest of the UI.
 - **RightRail** — stacks Drone Status, Flight Approval, and Notification panels. Shows WebSocket connection badge and a "Declare Emergency" button at the bottom.
 
 ### State Management
@@ -167,10 +168,21 @@ To connect a real backend, set `VITE_WS_URL` (see Environment below). The hook, 
 
 All panels share a collapsible design — dark green header bar with icon, title, and rotating chevron. Click the header to expand or collapse.
 
+### Map Drone Popup
+
+Clicking a drone marker opens a compact popup card pinned directly above the icon on the map:
+
+- Moves with the drone in real time — position syncs on every 1.2 s telemetry tick via an OpenLayers `Overlay`.
+- Header shows the drone name and an **×** close button.
+- Body shows: ID, Speed (m/s), Altitude (m), Heading (°), and colour-coded Status.
+- Closes via the × button (calls `selectDrone(null)` wrapped in `startTransition`) or by clicking empty map space.
+- Clicking inside the popup does **not** propagate to the map (`stopEvent: true` on the Overlay).
+- Implemented in `DronePopup.tsx` — a pure presentational component with no map or store dependencies.
+
 ### Drone Status
 
 - **No drone selected** — shows the count of actively tracked drones and a prompt to select one on the map.
-- **Drone selected** — shows live telemetry: name, ID, speed (m/s), altitude (m), heading (°), and colour-coded status.
+- **Drone selected** — shows the same live telemetry as the map popup: name, ID, speed (m/s), altitude (m), heading (°), and colour-coded status. Both the popup and this panel update together.
 
 ### Flight Approval
 

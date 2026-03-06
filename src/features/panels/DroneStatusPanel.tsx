@@ -1,21 +1,12 @@
-import { useState, useMemo, type JSX } from "react";
+import { useState, type JSX } from "react";
 import { useDroneStore } from "../../store/droneStore";
-import { droneStatusColor } from "../../utils/statusColors";
 
 function DroneStatusPanel(): JSX.Element {
   const [open, setOpen] = useState(true);
   const drones = useDroneStore((state) => state.drones);
-  const selectedDroneId = useDroneStore((state) => state.selectedDroneId);
 
-  const selected = useMemo(() => {
-    if (!selectedDroneId) return null;
-    return drones[selectedDroneId] ?? null;
-  }, [drones, selectedDroneId]);
-
-  const activeDroneCount = useMemo(
-    () => Object.values(drones).filter((d) => d.status !== "offline").length,
-    [drones]
-  );
+  // React Compiler automatically memoises this — no useMemo() needed.
+  const activeDroneCount = Object.values(drones).filter((d) => d.status !== "offline").length;
 
   const icon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-success">
@@ -43,41 +34,10 @@ function DroneStatusPanel(): JSX.Element {
       </button>
       {open && (
         <div className="px-4 py-3">
-          {selected ? (
-            <div className="space-y-1 text-xs">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-300">Name</span>
-                <span className="font-medium text-mapGlow">{selected.name}</span>
-              </div>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-300">ID</span>
-                <span className="text-slate-200">{selected.id}</span>
-              </div>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-300">Speed</span>
-                <span className="text-slate-200">{selected.speedMps} m/s</span>
-              </div>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-300">Altitude</span>
-                <span className="text-slate-200">{selected.altitudeM} m</span>
-              </div>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-300">Heading</span>
-                <span className="text-slate-200">{selected.headingDeg}°</span>
-              </div>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-300">Status</span>
-                <span className={droneStatusColor(selected.status)}>
-                  {selected.status.charAt(0).toUpperCase() + selected.status.slice(1)}
-                </span>
-              </div>
-            </div>
-          ) : (
             <div className="text-xs text-slate-300">
               <p><span className="font-medium text-slate-100">{activeDroneCount}</span> active drone{activeDroneCount !== 1 ? "s" : ""} tracked.</p>
               <p className="mt-1 text-slate-400">Select a drone on the map to inspect its details.</p>
             </div>
-          )}
         </div>
       )}
     </section>
