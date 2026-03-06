@@ -10,7 +10,7 @@ import { useDroneStore } from "../../store/droneStore";
 import { useFlightStore } from "../../store/flightStore";
 import { syncDroneFeatures } from "./mapLayers";
 
-const mapCenter = fromLonLat([-0.56, 51.86]);
+const mapCenter = fromLonLat([-1.2577, 51.752]);
 
 function MapContainer(): JSX.Element {
   const mapRef = useRef<HTMLDivElement | null>(null);

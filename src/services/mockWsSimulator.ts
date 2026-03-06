@@ -5,8 +5,8 @@ const baseDrones: Drone[] = [
   {
     id: "drn-102",
     name: "North Watcher",
-    lat: 51.9064,
-    lon: -0.5019,
+    lat: 51.788,
+    lon: -1.258,
     altitudeM: 123,
     speedMps: 14,
     headingDeg: 78,
@@ -16,8 +16,8 @@ const baseDrones: Drone[] = [
   {
     id: "drn-304",
     name: "Valley Scout",
-    lat: 51.8293,
-    lon: -0.6372,
+    lat: 51.742,
+    lon: -1.312,
     altitudeM: 88,
     speedMps: 11,
     headingDeg: 25,
@@ -27,8 +27,8 @@ const baseDrones: Drone[] = [
   {
     id: "drn-401",
     name: "Grid Runner",
-    lat: 51.8709,
-    lon: -0.4562,
+    lat: 51.738,
+    lon: -1.198,
     altitudeM: 101,
     speedMps: 10,
     headingDeg: 140,
