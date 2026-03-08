@@ -3,15 +3,7 @@ import DroneStatusPanel from "./DroneStatusPanel";
 import { useDroneStore } from "../../store/droneStore";
 import type { Drone } from "../../types/drone";
 
-// ── Notes on DroneStatusPanel behaviour ───────────────────────────────────
-//
-// Since the map popup now handles per-drone telemetry detail, this panel has
-// been simplified to a status overview only. It always shows:
-//   • A count of active (non-offline) drones
-//   • A prompt directing the user to click a drone on the map
-//
-// Selected drone name, speed, altitude, heading, and status are no longer
-// rendered here — see DronePopup.tsx and DronePopup.test.tsx for those tests.
+// Panel is intentionally summary-only; detailed telemetry is covered by popup tests.
 
 const makeDrone = (id: string, overrides?: Partial<Drone>): Drone => ({
   id,

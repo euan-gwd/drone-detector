@@ -1,16 +1,12 @@
 import { useState, type JSX } from 'react';
+import { Bell, ChevronDown, X } from 'lucide-react';
 import { useNotificationStore } from "../../store/notificationStore";
 import { notificationLevelClass } from "../../utils/statusColors";
 
 /**
  * Renders the body of a notification, highlighting the drone name in cyan.
- *
- * Preferred path: if the notification carries structured `droneName` and `droneId`
- * fields, those are rendered directly — no string parsing required.
- *
- * Legacy fallback: notifications created before the structured fields were added
- * embed the drone identifier in the message string as "Name (id) rest…".
- * The regex extracts those parts so the name can still be highlighted.
+ * Uses structured `droneName`/`droneId` when present, with a regex fallback
+ * for older plain-text messages.
  */
 function FormattedMessage({
   message,
@@ -21,7 +17,6 @@ function FormattedMessage({
   droneName?: string;
   droneId?: string;
 }): JSX.Element {
-  // Preferred: use the typed fields when both are present
   if (droneName && droneId) {
     return (
       <p className="mt-1 text-slate-300">
@@ -31,9 +26,8 @@ function FormattedMessage({
     );
   }
 
-  // Legacy fallback: parse "Drone Name (drn-xxx) rest of message" with a regex.
-  // This handles any notification that was created before droneName/droneId
-  // were added to NotificationItem — remove once all producers are updated.
+  // TODO(notification-legacy-format): remove after all producers send structured fields.
+  // Legacy input format: "Drone Name (drn-xxx) rest of message".
   const match = /^([^(]+?)\s(\([^)]+\))\s(.+)$/.exec(message);
   if (match) {
     const [, name, id, rest] = match;
@@ -52,11 +46,7 @@ function NotificationPanel(): JSX.Element {
   const items = useNotificationStore((state) => state.items);
   const clearNotification = useNotificationStore((state) => state.clearNotification);
 
-  const icon = (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-success">
-      <path fillRule="evenodd" d="M10 2a6 6 0 00-6 6c0 1.887-.454 3.665-1.257 5.234a.75.75 0 00.515 1.076 32.91 32.91 0 003.256.508 3.5 3.5 0 006.972 0 32.903 32.903 0 003.256-.508.75.75 0 00.515-1.076A11.448 11.448 0 0116 8a6 6 0 00-6-6zM8.05 14.943a33.54 33.54 0 003.9 0 2 2 0 01-3.9 0z" clipRule="evenodd" />
-    </svg>
-  );
+  const icon = <Bell className="h-4 w-4 text-success" />;
 
   return (
     <section className="overflow-hidden rounded-lg border border-slate-600 bg-surfaceAlt shadow-panel">
@@ -68,14 +58,7 @@ function NotificationPanel(): JSX.Element {
         {icon}
         <span className="flex-1">Notifications</span>
         <span className="text-[11px] text-white/50">{items.length}</span>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          className={`h-4 w-4 text-white/60 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-        >
-          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-        </svg>
+        <ChevronDown className={`h-4 w-4 text-white/60 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <div className="max-h-72 space-y-3 overflow-auto px-4 py-3 pr-3">
@@ -90,9 +73,7 @@ function NotificationPanel(): JSX.Element {
                   className="absolute right-0 top-0 text-slate-500 hover:text-slate-300"
                   aria-label="Dismiss notification"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
-                    <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
-                  </svg>
+                  <X className="h-3.5 w-3.5" />
                 </button>
                   <p className={`font-semibold ${notificationLevelClass(item.level)}`}>{item.title}</p>
                   <FormattedMessage message={item.message} droneName={item.droneName} droneId={item.droneId} />

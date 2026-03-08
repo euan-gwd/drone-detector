@@ -12,7 +12,7 @@ import { useNotificationStore } from "./notificationStore";
  * | "takeoff"          | plan is "approved", drone is landed (offline)  | Sets drone control status to "online"            |
  * | "land"             | plan is "approved", drone is airborne          | Sets drone control status to "offline"           |
  * | "end-plan"         | plan is "approved", drone is landed (offline)  | Resets plan to "pending"                         |
- * | "view"             | any state                                       | No-op — used as a placeholder                   |
+ * | "view"             | any state                                       | Placeholder action; no flight-state transition   |
  */
 type FlightAction = "view" | "request-approval" | "end-plan" | "land" | "takeoff";
 
@@ -20,10 +20,8 @@ interface FlightStore {
   approvals: FlightApproval[];
   /**
    * The action string that is currently being processed, or `null` when idle.
-   * Set at the start of `runAction` and cleared when the action resolves.
-   * This prevents the user from triggering concurrent conflicting commands
-   * on the same drone while a previous command is still in-flight (e.g. awaiting
-   * the simulated network delay).
+    * Set at the start of `runAction` and cleared when the action resolves so the
+    * UI can disable controls while a command is in-flight.
    */
   busyAction: string | null;
   seedApprovals: (items: FlightApproval[]) => void;
@@ -76,7 +74,7 @@ const INITIAL_APPROVALS: FlightApproval[] = [
 ];
 
 export const useFlightStore = create<FlightStore>((set, get) => {
-  // Initialize pending drones as offline
+  // Initialize pending drones as offline.
   INITIAL_APPROVALS.forEach((item) => {
     if (item.status === "pending") {
       const { setControlStatus, updateDroneStatus } = useDroneStore.getState();
@@ -108,7 +106,7 @@ export const useFlightStore = create<FlightStore>((set, get) => {
     },
   runAction: async (droneId, action) => {
     set({ busyAction: action });
-    // Simulate network round-trip latency (900 ms)
+    // Simulate network round-trip latency (900 ms).
     await wait(900);
 
     // Read current state from sibling stores.
@@ -121,8 +119,7 @@ export const useFlightStore = create<FlightStore>((set, get) => {
     const addNotification = useNotificationStore.getState().addNotification;
     const approval = get().approvals.find((item) => item.aircraftId === droneId);
 
-    // ── request-approval ──────────────────────────────────────────────────
-    // Creates or updates the approval record to "approved" status and notifies.
+    // request-approval: set plan to approved and emit success notification.
     if (action === "request-approval") {
       const now = new Date();
       set((state) => ({
@@ -150,9 +147,7 @@ export const useFlightStore = create<FlightStore>((set, get) => {
       return;
     }
 
-    // ── guard: ensure a plan record exists ──────────────────────────────────
-    // If no approval record exists at all, create a stub so the UI always has
-    // something to display, then let the action-specific guard below handle it.
+    // Ensure a plan record exists before action-specific guard checks.
     if (!approval) {
       set((state) => ({
         approvals: upsertApproval(state.approvals, droneId, () => ({
@@ -168,7 +163,7 @@ export const useFlightStore = create<FlightStore>((set, get) => {
       updateDroneStatus(droneId, "offline");
     }
 
-    // ── guard: takeoff/land require an approved plan ─────────────────────────
+    // Guard: takeoff and land require an approved plan.
     if ((action === "takeoff" || action === "land") && approval?.status !== "approved") {
       set((state) => ({
         approvals: upsertApproval(state.approvals, droneId, (current) => ({
@@ -194,24 +189,19 @@ export const useFlightStore = create<FlightStore>((set, get) => {
       return;
     }
 
-    // ── land ──────────────────────────────────────────────────────────────────
-    // Sets the control override to "offline" — droneStore will freeze position
-    // and zero speed/altitude on every subsequent telemetry update.
+    // land: force offline control status.
     if (action === "land") {
       setControlStatus(droneId, "offline");
       updateDroneStatus(droneId, "offline");
     }
 
-    // ── takeoff ───────────────────────────────────────────────────────────────
-    // Clears the "offline" control override so the drone resumes live movement.
+    // takeoff: set control status to online.
     if (action === "takeoff") {
       setControlStatus(droneId, "online");
       updateDroneStatus(droneId, "online");
     }
 
-    // ── end-plan ──────────────────────────────────────────────────────────────
-    // Resets the plan back to "pending" and lands the drone.
-    // Blocked if the plan is not approved, or if the drone is still airborne.
+    // end-plan: reset plan to pending and ensure drone is landed.
     if (action === "end-plan") {
       if (approval?.status !== "approved") {
         set((state) => ({

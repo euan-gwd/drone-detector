@@ -35,27 +35,22 @@ const markerStyle = (
   });
 };
 
-// Drone features in the vector source are identified by "drone-{droneId}".
-// This convention lets us look up a specific drone's feature in O(1) without
-// iterating the whole source.
+// Stable feature ID convention used by getFeatureById lookups.
 const featureId = (droneId: string) => `drone-${droneId}`;
 
 /**
  * Synchronises an OpenLayers VectorSource with the current drone state.
  *
- * This function is called on every Zustand store update that affects drones
- * (position change, selection change, approval status change). It performs a
- * two-phase update:
+ * Two-phase update:
  *
- * 1. **Remove stale features** — any feature whose ID is no longer in
+ * 1. **Remove stale features** - any feature whose ID is no longer in
  *    `drones` is removed first. This handles drones that have gone offline.
  *
- * 2. **Create or update features** — each drone in `drones` either gets a
+ * 2. **Create or update features** - each drone in `drones` either gets a
  *    new map feature or has its existing feature's geometry and style updated.
  *
  * The removal phase runs before the upsert phase so that if a drone ID were
- * ever reused (old drone removed, new drone assigned the same ID), there is
- * never a moment where two features share the same ID.
+ * reused, there is never a moment where two features share the same ID.
  */
 export const syncDroneFeatures = (
   source: VectorSource,
@@ -92,10 +87,7 @@ export const syncDroneFeatures = (
     }
 
     const geometry = existing.getGeometry();
-    // OpenLayers guarantees that drone features always have Point geometry
-    // (we set it in the `new Feature({ geometry: new Point(...) })` call above).
-    // The instanceof check is a safety guard to satisfy TypeScript's type narrowing;
-    // if it ever fires for real, it indicates a bug in the feature creation path.
+    // Safety/type-narrowing guard; this should always be Point for drone features.
     if (geometry instanceof Point) {
       geometry.setCoordinates(coordinate);
     }

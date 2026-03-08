@@ -16,7 +16,7 @@ interface DroneStore {
    * Cleared (key deleted) when control is returned to automatic (e.g. after
    * a flight plan ends).
    *
-   * Persisted to localStorage so in-progress control states survive a page
+    * Persisted to sessionStorage so in-progress control states survive a page
    * refresh (see `partialize` in the persist config below).
    */
   controlStatusByDrone: Record<string, Drone["status"]>;
@@ -35,24 +35,17 @@ export const useDroneStore = create<DroneStore>()(
       /**
        * Merges an incoming drone update from the WebSocket into the store.
        *
-       * Two important behaviours that can surprise newcomers:
-       *
-       * 1. **Status override** — If the operator has issued a land/takeoff command
-       *    (`controlStatusByDrone[drone.id]` is set), the incoming server status is
-       *    replaced by that commanded status. This keeps the UI consistent with the
-       *    last operator action until explicit control is released.
-       *
-       * 2. **Position freeze** — When the commanded status is "offline" (landed),
-       *    the drone's lat/lon, altitude, speed, and heading are locked to their
-       *    last-known values so the marker doesn't move while the drone is on the
-       *    ground. The telemetry stream continues arriving from the server but is
-       *    intentionally discarded for those fields.
+        * Invariants:
+        * 1. A control override (`controlStatusByDrone[drone.id]`) always takes
+        *    precedence over server-reported status.
+        * 2. When commanded "offline", movement fields are frozen and altitude/speed
+        *    are forced to zero so landed drones do not drift on the map.
        */
       upsertDrone: (drone) =>
         set((state) => {
           const current = state.drones[drone.id];
           const controlledStatus = state.controlStatusByDrone[drone.id];
-          // If a control override is active, use it instead of the server-reported status
+          // Control override always wins over server status.
           const isLanded = controlledStatus === "offline";
 
           const nextDrone: Drone = {
@@ -61,7 +54,7 @@ export const useDroneStore = create<DroneStore>()(
           };
 
           if (isLanded) {
-            // Freeze position and telemetry while the drone is commanded to be on the ground
+            // Keep landed drones visually stationary.
             nextDrone.lat = current?.lat ?? drone.lat;
             nextDrone.lon = current?.lon ?? drone.lon;
             nextDrone.altitudeM = 0;
@@ -108,7 +101,7 @@ export const useDroneStore = create<DroneStore>()(
         set((state) => {
           const nextControls = { ...state.controlStatusByDrone };
           if (status === null) {
-            // Remove override — drone status will be governed by the server again
+            // Remove override so the next server update controls status again.
             delete nextControls[id];
           } else {
             nextControls[id] = status;
@@ -148,8 +141,7 @@ export const useDroneStore = create<DroneStore>()(
         delete state.selectedDroneId;
         return state;
       },
-      // Only persist control overrides; all other state is rebuilt from the
-      // WebSocket stream on every page load
+      // Persist only control overrides; all other state is rebuilt from telemetry.
       partialize: (state) => ({
         controlStatusByDrone: state.controlStatusByDrone
       })

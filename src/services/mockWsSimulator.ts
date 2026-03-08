@@ -41,11 +41,7 @@ const baseDrones: Drone[] = [
 const drift = () => (Math.random() - 0.5) * 0.0026;
 
 /**
- * Builds a NotificationItem for a drone event.
- *
- * The `droneName` and `droneId` fields are set so the notification panel can
- * highlight the drone name without needing to parse the message string.
- * The `message` field contains only the descriptive text (no drone prefix).
+ * Builds a structured notification payload for a drone event.
  */
 const makeNotification = (drone: Drone, level: NotificationItem["level"]): NotificationItem => {
   const messages: Record<NotificationItem["level"], { title: string; message: string }> = {
@@ -72,7 +68,7 @@ const makeNotification = (drone: Drone, level: NotificationItem["level"]): Notif
     level,
     title: messages[level].title,
     message: messages[level].message,
-    // Structured fields let the UI highlight the drone name without regex parsing
+    // Keep structured identifiers so UI rendering does not rely on message parsing.
     droneName: drone.name,
     droneId: drone.id,
     createdAt: new Date().toISOString()
@@ -80,12 +76,8 @@ const makeNotification = (drone: Drone, level: NotificationItem["level"]): Notif
 };
 
 /**
- * Produces one batch of WebSocket events for a single simulator tick.
- *
- * Each call moves every drone slightly and may append one notification event.
- * Calling this function produces different results each time (stochastic) —
- * this is intentional for UI development. For deterministic testing, replace
- * `createMockEventBatch` with a seeded version.
+ * Produces one simulator tick: updated positions for all drones plus
+ * an optional notification event.
  */
 export const createMockEventBatch = (previous: Drone[]): DroneSocketEvent[] => {
   const updated = previous.map((drone) => {
@@ -114,9 +106,9 @@ export const createMockEventBatch = (previous: Drone[]): DroneSocketEvent[] => {
     payload: { drone }
   }));
 
-  // 28% chance of generating one notification per tick (≈ 1 notification every 4 s at 1.2 s tick)
+  // 28% chance of generating one notification per tick (~1 every 4s at 1.2s cadence).
   if (Math.random() > 0.72) {
-    // Pick a random drone to associate the notification with
+    // Associate the notification with a random drone from this tick.
     const triggeringDrone = updated[Math.floor(Math.random() * updated.length)];
     const level = triggeringDrone.status === "warning"
       ? "warning"
