@@ -5,12 +5,28 @@ import {
 } from "./statusColors";
 
 describe("droneStatusColor", () => {
-  it("returns amber for warning", () => {
-    expect(droneStatusColor("warning")).toBe("text-amber-300");
+  it("returns yellow for warning", () => {
+    expect(droneStatusColor("warning")).toBe("text-yellow-300");
   });
 
-  it("returns slate for offline", () => {
-    expect(droneStatusColor("offline")).toBe("text-slate-300");
+  it("returns orange-400 when approval is pending", () => {
+    expect(droneStatusColor("online", "pending")).toBe("text-orange-400");
+  });
+
+  it("returns white for offline", () => {
+    expect(droneStatusColor("offline")).toBe("text-white");
+  });
+
+  it("returns slate-200 when offline approval is pending", () => {
+    expect(droneStatusColor("offline", "pending")).toBe("text-slate-200");
+  });
+
+  it("returns rose for offline approval actionrequired", () => {
+    expect(droneStatusColor("offline", "actionrequired")).toBe("text-rose-300");
+  });
+
+  it("returns sky for offline approval approved", () => {
+    expect(droneStatusColor("offline", "approved")).toBe("text-sky-300");
   });
 
   it("returns success for online", () => {
@@ -23,8 +39,8 @@ describe("flightApprovalStatusColor", () => {
     expect(flightApprovalStatusColor("approved")).toBe("text-success");
   });
 
-  it("returns amber for pending", () => {
-    expect(flightApprovalStatusColor("pending")).toBe("text-amber-300");
+  it("returns orange-400 for pending", () => {
+    expect(flightApprovalStatusColor("pending")).toBe("text-orange-400");
   });
 
   it("returns rose for actionrequired", () => {
@@ -37,8 +53,8 @@ describe("flightApprovalStatusColor", () => {
 });
 
 describe("notificationLevelClass", () => {
-  it("returns amber for warning", () => {
-    expect(notificationLevelClass("warning")).toBe("text-amber-300");
+  it("returns yellow for warning", () => {
+    expect(notificationLevelClass("warning")).toBe("text-yellow-300");
   });
 
   it("returns rose for error", () => {

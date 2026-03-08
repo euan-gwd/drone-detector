@@ -1,5 +1,6 @@
 import { useState, useOptimistic, type JSX } from "react";
 import type { ReactNode } from "react";
+import { BadgeCheck, ChevronDown, Send } from "lucide-react";
 import { useDroneStore } from "../../store/droneStore";
 import { useFlightStore } from "../../store/flightStore";
 import type { FlightApproval } from "../../types/drone";
@@ -33,14 +34,7 @@ function SectionHeader({
     >
       {icon}
       <span className="flex-1">{title}</span>
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 20 20"
-        fill="currentColor"
-        className={`h-4 w-4 text-white/60 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-      >
-        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-      </svg>
+      <ChevronDown className={`h-4 w-4 text-white/60 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
     </button>
   );
 }
@@ -103,20 +97,16 @@ function FlightApprovalPanel(): JSX.Element {
   // End Flight is available whenever the drone is on the ground (doesn't require approval)
   const canEndFlight = !!selectedDroneId && !isAirborne;
 
-  const flightStatus = selectedDrone?.status === "offline" ? "Landed" : selectedDrone ? "In flight" : "—";
+  const isReadyOnGround =
+    selectedDrone?.status === "offline" &&
+    (current?.status === "approved" || current?.status === "pending" || current?.status === "actionrequired");
+
+  const flightStatus = !selectedDrone ? "—" : isReadyOnGround ? "Ready" : selectedDrone.status === "offline" ? "Landed" : "In flight";
   const hasStarted = isApproved && selectedDrone?.status !== "offline";
 
-  const checkIcon = (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-success">
-      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-    </svg>
-  );
+  const checkIcon = <BadgeCheck className="h-4 w-4 text-success" />;
 
-  const droneIcon = (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-success">
-      <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-    </svg>
-  );
+  const droneIcon = <Send className="h-4 w-4 text-success" />;
 
   return (
     <section className="overflow-hidden rounded-lg border border-slate-600 bg-surfaceAlt shadow-panel">

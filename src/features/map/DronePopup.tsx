@@ -1,10 +1,11 @@
 import type { JSX } from "react";
 import { X } from 'lucide-react';
-import type { Drone } from "../../types/drone";
+import type { Drone, FlightApproval } from "../../types/drone";
 import { droneStatusColor } from "../../utils/statusColors";
 
 interface DronePopupProps {
   drone: Drone;
+  approvalStatus?: FlightApproval["status"];
   /** Called when the user clicks the X button to dismiss the popup */
   onClose: () => void;
 }
@@ -13,8 +14,12 @@ interface DronePopupProps {
  * Presentational popup rendered inside an OpenLayers overlay.
  * Receives all data via props; map and store wiring lives in MapContainer.
  */
-function DronePopup({ drone, onClose }: DronePopupProps): JSX.Element {
-  const statusLabel = drone.status.charAt(0).toUpperCase() + drone.status.slice(1);
+function DronePopup({ drone, approvalStatus, onClose }: DronePopupProps): JSX.Element {
+  const statusLabel =
+    drone.status === "offline" &&
+    (approvalStatus === "approved" || approvalStatus === "pending" || approvalStatus === "actionrequired")
+      ? "Ready"
+      : drone.status.charAt(0).toUpperCase() + drone.status.slice(1);
 
   return (
     <div className="relative">
@@ -40,7 +45,7 @@ function DronePopup({ drone, onClose }: DronePopupProps): JSX.Element {
           <TelemetryRow label="Heading" value={`${drone.headingDeg}°`} />
           <div className="flex items-baseline justify-between gap-2 pt-0.5">
             <span className="text-slate-400">Status</span>
-            <span className={`font-medium ${droneStatusColor(drone.status)}`}>
+            <span className={`font-medium ${droneStatusColor(drone.status, approvalStatus)}`}>
               {statusLabel}
             </span>
           </div>

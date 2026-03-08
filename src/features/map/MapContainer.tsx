@@ -131,7 +131,11 @@ function MapContainer(): JSX.Element {
       <div ref={mapRef} className="h-full w-full" aria-label="Live drone map" />
       <div ref={popupContainerRef}>
         {selectedDrone && (
-          <DronePopup drone={selectedDrone} onClose={handleClose} />
+          <DronePopup
+            drone={selectedDrone}
+            approvalStatus={approvalStatusByDrone[selectedDrone.id]}
+            onClose={handleClose}
+          />
         )}
       </div>
     </div>

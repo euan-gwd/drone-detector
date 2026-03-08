@@ -9,15 +9,19 @@ import { createDroneIconSvg, svgToDataUrl } from "./droneIcon";
 const markerStyle = (
   status: Drone["status"],
   selected: boolean,
-  approvalStatus?: FlightApproval["status"]
+  approvalStatus?: FlightApproval["status"],
 ): Style => {
-  let fillColor = status === "warning" ? "#f59e0b" : status === "offline" ? "#ef4444" : "#38bdf8";
+  let fillColor = status === "warning" ? "#facc15" : status === "offline" ? "#38bdf8" : "#1aba56";
 
   if (approvalStatus === "pending") {
-    fillColor = "#f59e0b";
+    fillColor = status === "offline" ? "#ffffff" : "#fb923c";
   }
 
-  if (approvalStatus === "actionrequired") {
+  if (approvalStatus === "approved") {
+    fillColor = status === "warning" ? "#facc15" : status === "offline" ? "#38bdf8" : "#1aba56";
+  }
+
+  if (approvalStatus === "actionrequired" && (status === "online" || status === "offline")) {
     fillColor = "#ef4444";
   }
 
@@ -56,7 +60,7 @@ export const syncDroneFeatures = (
   source: VectorSource,
   drones: Record<string, Drone>,
   selectedDroneId: string | null,
-  approvalStatusByDrone: Record<string, FlightApproval["status"]>
+  approvalStatusByDrone: Record<string, FlightApproval["status"]>,
 ): void => {
   const incomingIds = new Set(Object.keys(drones));
 

@@ -59,6 +59,21 @@ describe("DronePopup", () => {
     expect(screen.getByText("Offline")).toBeInTheDocument();
   });
 
+  it("renders 'Ready' for an offline drone when approval is approved", () => {
+    render(<DronePopup drone={makeDrone({ status: "offline" })} approvalStatus="approved" onClose={() => {}} />);
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+  });
+
+  it("renders 'Ready' for an offline drone when approval is pending", () => {
+    render(<DronePopup drone={makeDrone({ status: "offline" })} approvalStatus="pending" onClose={() => {}} />);
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+  });
+
+  it("renders 'Ready' for an offline drone when approval is actionrequired", () => {
+    render(<DronePopup drone={makeDrone({ status: "offline" })} approvalStatus="actionrequired" onClose={() => {}} />);
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+  });
+
   it("calls onClose when the X button is clicked", () => {
     const handleClose = vi.fn();
     render(<DronePopup drone={makeDrone()} onClose={handleClose} />);
@@ -73,17 +88,23 @@ describe("DronePopup", () => {
     expect(screen.getByRole("button", { name: /close drone popup/i })).toBeInTheDocument();
   });
 
-  it("applies the amber colour class for warning status", () => {
+  it("applies the yellow colour class for warning status", () => {
     render(<DronePopup drone={makeDrone({ status: "warning" })} onClose={() => {}} />);
-    // The status span should carry the amber colour class
+    // The status span should carry the yellow colour class
     const statusEl = screen.getByText("Warning");
-    expect(statusEl.className).toContain("amber");
+    expect(statusEl.className).toContain("yellow");
   });
 
-  it("applies the muted colour class for offline status", () => {
+  it("applies the white colour class for offline status", () => {
     render(<DronePopup drone={makeDrone({ status: "offline" })} onClose={() => {}} />);
     const statusEl = screen.getByText("Offline");
-    expect(statusEl.className).toContain("slate");
+    expect(statusEl.className).toContain("white");
+  });
+
+  it("applies the slate colour class for ready status when approval is pending", () => {
+    render(<DronePopup drone={makeDrone({ status: "offline" })} approvalStatus="pending" onClose={() => {}} />);
+    const statusEl = screen.getByText("Ready");
+    expect(statusEl.className).toContain("slate-200");
   });
 
   it("does not call onClose when telemetry rows are clicked", () => {

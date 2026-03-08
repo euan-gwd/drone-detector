@@ -22,7 +22,7 @@ const baseDrones: Drone[] = [
     speedMps: 11,
     headingDeg: 25,
     updatedAt: new Date().toISOString(),
-    status: "warning"
+    status: "online"
   },
   {
     id: "drn-401",
