@@ -1,4 +1,5 @@
 import type { Drone, NotificationItem } from "../types/drone";
+import type { SensorTower, CameraState, DetectionData } from "../types/sensorTower";
 import type { DroneSocketEvent } from "../types/websocket";
 
 const baseDrones: Drone[] = [
@@ -34,6 +35,102 @@ const baseDrones: Drone[] = [
     headingDeg: 140,
     updatedAt: new Date().toISOString(),
     status: "online"
+  }
+];
+
+const baseTowers: SensorTower[] = [
+  {
+    id: "tower-alpha",
+    name: "Tower Alpha",
+    lat: 51.780,
+    lon: -1.245,
+    altitudeM: 45,
+    status: "online",
+    range: 5000,
+    updatedAt: new Date().toISOString(),
+    sensors: [
+      {
+        id: "radar-1",
+        towerId: "tower-alpha",
+        type: "radar",
+        status: "active",
+        signalStrength: 0.85,
+        lastDetection: new Date().toISOString()
+      },
+      {
+        id: "lidar-1",
+        towerId: "tower-alpha",
+        type: "lidar",
+        status: "active",
+        signalStrength: 0.92,
+        lastDetection: new Date().toISOString()
+      }
+    ],
+    cameras: [
+      {
+        id: "cam-1",
+        towerId: "tower-alpha",
+        name: "Camera 1",
+        azimuth: 45,
+        elevation: 10,
+        fieldOfView: 60,
+        zoom: 1.0,
+        status: "active",
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: "cam-2",
+        towerId: "tower-alpha",
+        name: "Camera 2",
+        azimuth: 225,
+        elevation: 15,
+        fieldOfView: 45,
+        zoom: 1.5,
+        status: "active",
+        updatedAt: new Date().toISOString()
+      }
+    ]
+  },
+  {
+    id: "tower-bravo",
+    name: "Tower Bravo",
+    lat: 51.740,
+    lon: -1.290,
+    altitudeM: 38,
+    status: "online",
+    range: 4500,
+    updatedAt: new Date().toISOString(),
+    sensors: [
+      {
+        id: "radar-2",
+        towerId: "tower-bravo",
+        type: "radar",
+        status: "active",
+        signalStrength: 0.78,
+        lastDetection: new Date().toISOString()
+      },
+      {
+        id: "thermal-1",
+        towerId: "tower-bravo",
+        type: "thermal",
+        status: "active",
+        signalStrength: 0.71,
+        lastDetection: new Date().toISOString()
+      }
+    ],
+    cameras: [
+      {
+        id: "cam-3",
+        towerId: "tower-bravo",
+        name: "Camera 3",
+        azimuth: 120,
+        elevation: 8,
+        fieldOfView: 75,
+        zoom: 1.2,
+        status: "active",
+        updatedAt: new Date().toISOString()
+      }
+    ]
   }
 ];
 
@@ -77,9 +174,9 @@ const makeNotification = (drone: Drone, level: NotificationItem["level"]): Notif
 
 /**
  * Produces one simulator tick: updated positions for all drones plus
- * an optional notification event.
+ * tower updates, camera movements, and optional detection/notification events.
  */
-export const createMockEventBatch = (previous: Drone[]): DroneSocketEvent[] => {
+export const createMockEventBatch = (previous: Drone[], towers: SensorTower[]): DroneSocketEvent[] => {
   const updated = previous.map((drone) => {
     // Speed changes by up to ±1.05 m/s per tick; minimum hover speed is 3 m/s
     const nextSpeed = Math.max(3, drone.speedMps + (Math.random() - 0.5) * 2.1);
@@ -106,6 +203,74 @@ export const createMockEventBatch = (previous: Drone[]): DroneSocketEvent[] => {
     payload: { drone }
   }));
 
+  // Generate tower position updates (less frequent than drones)
+  if (Math.random() > 0.7) {
+    towers.forEach((tower) => {
+      events.push({
+        version: 1,
+        type: "tower.position",
+        timestamp: new Date().toISOString(),
+        payload: { tower }
+      });
+    });
+  }
+
+  // Generate camera movements (30% chance per tick)
+  if (Math.random() > 0.7) {
+    towers.forEach((tower) => {
+      tower.cameras.forEach((camera) => {
+        // Simulate camera rotation: ±20° azimuth change, slight elevation adjustment
+        const updatedCamera: CameraState = {
+          ...camera,
+          azimuth: Math.round((camera.azimuth + (Math.random() - 0.5) * 40 + 360) % 360),
+          elevation: Math.max(0, Math.min(45, camera.elevation + (Math.random() - 0.5) * 6)),
+          updatedAt: new Date().toISOString()
+        };
+
+        events.push({
+          version: 1,
+          type: "tower.camera",
+          timestamp: new Date().toISOString(),
+          payload: { towerId: tower.id, camera: updatedCamera }
+        });
+      });
+    });
+  }
+
+  // Generate detection events (20% chance per tower per tick)
+  towers.forEach((tower) => {
+    if (Math.random() > 0.8) {
+      const nearbyDrone = updated.find((drone) => {
+        // Simple distance check - within tower range
+        const latDiff = Math.abs(drone.lat - tower.lat);
+        const lonDiff = Math.abs(drone.lon - tower.lon);
+        const approximateDistance = Math.sqrt(latDiff * latDiff + lonDiff * lonDiff) * 111000; // Rough km to m
+        return approximateDistance <= tower.range;
+      });
+
+      if (nearbyDrone) {
+        const detection: DetectionData = {
+          id: `detection-${crypto.randomUUID()}`,
+          towerId: tower.id,
+          sensorId: tower.sensors[0]?.id || "unknown",
+          droneId: nearbyDrone.id,
+          distance: Math.random() * tower.range,
+          bearing: Math.round(Math.random() * 360),
+          confidence: 0.7 + Math.random() * 0.3,
+          signalStrength: 0.6 + Math.random() * 0.4,
+          timestamp: new Date().toISOString()
+        };
+
+        events.push({
+          version: 1,
+          type: "tower.detection",
+          timestamp: new Date().toISOString(),
+          payload: { detection }
+        });
+      }
+    }
+  });
+
   // 28% chance of generating one notification per tick (~1 every 4s at 1.2s cadence).
   if (Math.random() > 0.72) {
     // Associate the notification with a random drone from this tick.
@@ -126,3 +291,5 @@ export const createMockEventBatch = (previous: Drone[]): DroneSocketEvent[] => {
 };
 
 export const mockInitialDrones = (): Drone[] => baseDrones;
+
+export const mockInitialTowers = (): SensorTower[] => baseTowers;

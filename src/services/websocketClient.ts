@@ -1,5 +1,5 @@
 import type { DroneSocketEvent } from "../types/websocket";
-import { createMockEventBatch, mockInitialDrones } from "./mockWsSimulator";
+import { createMockEventBatch, mockInitialDrones, mockInitialTowers } from "./mockWsSimulator";
 
 type EventHandler = (event: DroneSocketEvent) => void;
 
@@ -11,6 +11,8 @@ export class DroneSocketClient {
   private connected = false;
 
   private drones = mockInitialDrones();
+
+  private towers = mockInitialTowers();
 
   subscribe(handler: EventHandler): () => void {
     this.handlers.add(handler);
@@ -29,10 +31,18 @@ export class DroneSocketClient {
     });
 
     this.timerId = window.setInterval(() => {
-      const events = createMockEventBatch(this.drones);
+      const events = createMockEventBatch(this.drones, this.towers);
       this.drones = events
         .filter((event) => event.type === "drone.position")
         .map((event) => event.payload.drone);
+
+      // Update towers from tower.position events
+      const towerUpdates = events
+        .filter((event) => event.type === "tower.position")
+        .map((event) => event.payload.tower);
+      if (towerUpdates.length > 0) {
+        this.towers = towerUpdates;
+      }
 
       events.forEach((event) => this.emit(event));
     }, 1200);

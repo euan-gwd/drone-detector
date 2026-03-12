@@ -1,4 +1,4 @@
-import { createMockEventBatch, mockInitialDrones } from "./mockWsSimulator";
+import { createMockEventBatch, mockInitialDrones, mockInitialTowers } from "./mockWsSimulator";
 import type { NotificationItem } from "../types/drone";
 
 describe("mockInitialDrones", () => {
@@ -29,15 +29,16 @@ describe("mockInitialDrones", () => {
 
 describe("createMockEventBatch", () => {
   const initial = mockInitialDrones();
+  const towers = mockInitialTowers();
 
   it("emits one drone.position event per drone", () => {
-    const batch = createMockEventBatch(initial);
+    const batch = createMockEventBatch(initial, towers);
     const positionEvents = batch.filter((e) => e.type === "drone.position");
     expect(positionEvents).toHaveLength(initial.length);
   });
 
   it("position events carry valid drone payloads", () => {
-    const batch = createMockEventBatch(initial);
+    const batch = createMockEventBatch(initial, towers);
     batch
       .filter((e) => e.type === "drone.position")
       .forEach((event) => {
@@ -47,22 +48,22 @@ describe("createMockEventBatch", () => {
   });
 
   it("every event has version 1", () => {
-    const batch = createMockEventBatch(initial);
+    const batch = createMockEventBatch(initial, towers);
     batch.forEach((event) => expect(event.version).toBe(1));
   });
 
   it("only emits drone.position and notification.created event types", () => {
-    const validTypes = new Set(["drone.position", "notification.created"]);
+    const validTypes = new Set(["drone.position", "notification.created", "tower.position", "tower.detection", "tower.camera"]);
     // Run many batches to exercise the random notification branch
     for (let i = 0; i < 30; i++) {
-      createMockEventBatch(initial).forEach((e) => {
+      createMockEventBatch(initial, towers).forEach((e) => {
         expect(validTypes.has(e.type)).toBe(true);
       });
     }
   });
 
   it("drones drift their position on each batch", () => {
-    const batch = createMockEventBatch(initial);
+    const batch = createMockEventBatch(initial, towers);
     const updatedPositions = batch
       .filter((e) => e.type === "drone.position")
       .map((e) => (e.payload as { drone: { lat: number; lon: number } }).drone);
@@ -77,6 +78,7 @@ describe("createMockEventBatch", () => {
 
 describe("notification titles", () => {
   const initial = mockInitialDrones();
+  const towers = mockInitialTowers();
 
   // Each drone consumes 5 Math.random() calls (speed, lat, lon, altitude, heading).
   // With 3 drones that is 15 calls before the notification check:
@@ -106,9 +108,9 @@ describe("notification titles", () => {
   }
 
   it("warning notifications carry title 'Speed caution'", () => {
-    // index 15 → 0.8 triggers notification; index 16 → 0.1 selects drone 0 (drn-102, warning)
-    mockRandom({ 15: 0.8, 16: 0.1 });
-    const notif = extractNotification(createMockEventBatch(initial));
+    // Use higher indices to ensure we're past all tower generation random calls
+    mockRandom({ 30: 0.8, 31: 0.1 });
+    const notif = extractNotification(createMockEventBatch(initial, towers));
     expect(notif).not.toBeNull();
     expect(notif!.level).toBe("warning");
     expect(notif!.title).toBe("Speed caution");
@@ -116,26 +118,26 @@ describe("notification titles", () => {
   });
 
   it("info notifications carry title 'Flight update'", () => {
-    // index 16 → 0.99 selects drone 2 (drn-401, online); index 17 → 0.1 → Math.floor(0.1*2)=0 → info
-    mockRandom({ 15: 0.8, 16: 0.99, 17: 0.1 });
-    const notif = extractNotification(createMockEventBatch(initial));
+    // Use higher indices to ensure we're past all tower generation random calls
+    mockRandom({ 30: 0.8, 31: 0.99, 32: 0.1 });
+    const notif = extractNotification(createMockEventBatch(initial, towers));
     expect(notif).not.toBeNull();
     expect(notif!.level).toBe("info");
     expect(notif!.title).toBe("Flight update");
   });
 
   it("success notifications carry title 'Flight update'", () => {
-    // index 17 → 0.9 → Math.floor(0.9*2)=1 → success
-    mockRandom({ 15: 0.8, 16: 0.99, 17: 0.9 });
-    const notif = extractNotification(createMockEventBatch(initial));
+    // Use higher indices to ensure we're past all tower generation random calls
+    mockRandom({ 30: 0.8, 31: 0.99, 32: 0.9 });
+    const notif = extractNotification(createMockEventBatch(initial, towers));
     expect(notif).not.toBeNull();
     expect(notif!.level).toBe("success");
     expect(notif!.title).toBe("Flight update");
   });
 
   it("notification events include droneName and droneId", () => {
-    mockRandom({ 15: 0.8, 16: 0.1 }); // warning from drn-102
-    const notif = extractNotification(createMockEventBatch(initial));
+    mockRandom({ 30: 0.8, 31: 0.1 }); // warning from drn-102
+    const notif = extractNotification(createMockEventBatch(initial, towers));
     expect(notif).not.toBeNull();
     expect(notif!.droneName).toBe("North Watcher");
     expect(notif!.droneId).toBe("drn-102");
