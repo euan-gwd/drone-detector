@@ -63,17 +63,6 @@ const cameraFovStyle = (camera: CameraState): Style => {
     fill: new Fill({
       color: `${cameraColor}30` // 30 for ~20% opacity
     }),
-    // stroke: new Stroke({
-    //   color: cameraColor,
-    //   width: 2
-    // }),
-    // text: new Text({
-    //   text: camera.name,
-    //   font: "12px Arial",
-    //   fill: new Fill({ color: "#ffffff" }),
-    //   stroke: new Stroke({ color: "#000000", width: 2 }),
-    //   offsetY: -10
-    // })
   });
 };
 

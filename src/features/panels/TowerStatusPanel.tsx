@@ -7,17 +7,19 @@ function TowerStatusPanel(): JSX.Element {
   const towers = useTowerStore((state) => state.towers);
   const selectedTowerId = useTowerStore((state) => state.selectedTowerId);
   const selectTower = useTowerStore((state) => state.selectTower);
-  const detectionsByTower = useTowerStore((state) => state.detectionsByTower);
 
   const towerList = Object.values(towers);
+  const selectedTower = selectedTowerId ? towers[selectedTowerId] ?? null : null;
+  const selectedActiveCameras = selectedTower
+    ? selectedTower.cameras.filter((camera) => camera.status === "active").length
+    : 0;
+  const selectedActiveSensors = selectedTower
+    ? selectedTower.sensors.filter((sensor) => sensor.status === "active").length
+    : 0;
   const onlineTowers = towerList.filter(tower => tower.status === "online");
   const offlineTowers = towerList.filter(tower => tower.status === "offline");
   const maintenanceTowers = towerList.filter(tower => tower.status === "maintenance");
   const errorTowers = towerList.filter(tower => tower.status === "error");
-
-  const totalDetections = Object.values(detectionsByTower).reduce(
-    (sum, detections) => sum + detections.length, 0
-  );
 
   const getTowerStatusColor = (status: string): string => {
     switch (status) {
@@ -29,7 +31,7 @@ function TowerStatusPanel(): JSX.Element {
         return "text-red-400";
       case "offline":
       default:
-        return "text-gray-400";
+        return "text-gray-300";
     }
   };
 
@@ -68,14 +70,14 @@ function TowerStatusPanel(): JSX.Element {
               <span>Total towers:</span>
               <span className="font-medium text-slate-100">{towerList.length}</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
+            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
               <div className="flex justify-between">
                 <span>Online:</span>
                 <span className="text-green-400">{onlineTowers.length}</span>
               </div>
               <div className="flex justify-between">
                 <span>Offline:</span>
-                <span className="text-gray-400">{offlineTowers.length}</span>
+                <span className="text-gray-300">{offlineTowers.length}</span>
               </div>
               <div className="flex justify-between">
                 <span>Maintenance:</span>
@@ -86,11 +88,6 @@ function TowerStatusPanel(): JSX.Element {
                 <span className="text-red-400">{errorTowers.length}</span>
               </div>
             </div>
-            {totalDetections > 0 && (
-              <p className="mt-2 text-mapGlow">
-                <span className="font-medium">{totalDetections}</span> active detection{totalDetections !== 1 ? "s" : ""}
-              </p>
-            )}
           </div>
 
           {/* Tower List */}
@@ -109,8 +106,6 @@ function TowerStatusPanel(): JSX.Element {
                   })
                   .map((tower) => {
                     const isSelected = selectedTowerId === tower.id;
-                    const recentDetections = detectionsByTower[tower.id] || [];
-                    const activeSensors = tower.sensors.filter(s => s.status === "active").length;
 
                     return (
                       <button
@@ -123,39 +118,80 @@ function TowerStatusPanel(): JSX.Element {
                             : "hover:bg-slate-700/50"
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-2">
                             <div className={`w-2 h-2 rounded-full ${getTowerStatusDot(tower.status)}`} />
                             <span className="font-medium text-slate-200 truncate">
                               {tower.name}
                             </span>
                           </div>
-                          <div className="flex items-center gap-1 text-slate-400">
-                            {recentDetections.length > 0 && (
-                              <span className="text-mapGlow font-medium">
-                                {recentDetections.length}
-                              </span>
-                            )}
-                            <span className="text-[10px]">
-                              {activeSensors}/{tower.sensors.length}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center mt-0.5 text-[10px] text-slate-500">
-                          <span className={getTowerStatusColor(tower.status)}>
+                          <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] capitalize ${getTowerStatusColor(tower.status)} bg-slate-800/60`}>
                             {tower.status}
-                          </span>
-                          <span>
-                            {(tower.range / 1000).toFixed(1)}km range
                           </span>
                         </div>
                       </button>
                     );
                   })}
               </div>
+
+              <p className="text-xs font-medium text-slate-300 border-t border-slate-600 pt-2 mt-2">
+                Tower Details
+              </p>
+              {selectedTower ? (
+                <div className="rounded border border-slate-700 bg-slate-800/30 px-3 py-2 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-200">Tower:</span>
+                    <span className="text-slate-200">{selectedTower.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-200">Status:</span>
+                    <span className={`capitalize ${getTowerStatusColor(selectedTower.status)}`}>{selectedTower.status}</span>
+                  </div>
+                  <div className="border-t border-slate-700 pt-2 space-y-1">
+                    <div className="flex items-center justify-between gap-2 text-slate-300">
+                      <p>Cameras:</p>
+                      <p>{selectedActiveCameras}/{selectedTower.cameras.length} online</p>
+                    </div>
+                    <div className="space-y-1">
+                      {selectedTower.cameras.map((camera) => {
+                        const cameraOnline = camera.status === "active";
+                        return (
+                          <div key={camera.id} className="flex items-center justify-between gap-2">
+                            <span className="text-slate-300">{camera.name}</span>
+                            <span className={cameraOnline ? "text-green-300" : "text-slate-300"}>
+                              {cameraOnline ? "online" : "offline"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="border-t border-slate-700 pt-2 space-y-1">
+                    <div className="flex items-center justify-between gap-2 text-slate-300">
+                      <p>Sensors:</p>
+                      <p>{selectedActiveSensors}/{selectedTower.sensors.length} online</p>
+                    </div>
+                    <div className="space-y-1">
+                      {selectedTower.sensors.map((sensor) => {
+                        const sensorOnline = sensor.status === "active";
+                        return (
+                          <div key={sensor.id} className="flex items-center justify-between gap-2">
+                            <span className="text-slate-300 capitalize">{sensor.type}</span>
+                            <span className={sensorOnline ? "text-green-300" : "text-slate-300"}>
+                              {sensorOnline ? "online" : "offline"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-300">Select a tower from the list to inspect tower details.</p>
+              )}
             </div>
           ) : (
-            <p className="text-xs text-slate-400 border-t border-slate-600 pt-2">
+            <p className="text-xs text-slate-300 border-t border-slate-600 pt-2">
               No towers available.
             </p>
           )}
