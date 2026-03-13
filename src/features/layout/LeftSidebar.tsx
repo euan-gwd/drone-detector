@@ -6,8 +6,7 @@ const sections = [
   { title: "Home", items: [] },
   { title: "Flyer", items: ["Add a flyer", "Manage flyers"] },
   { title: "Aircraft", items: ["Add an aircraft", "Manage aircraft"] },
-  { title: "Organisation", items: ["Add an organisation", "Manage organisation"] },
-  // { title: "Flight", items: [] }
+  { title: "Organisation", items: ["Add an organisation", "Manage organisation"] }
 ];
 
 function ChevronIcon({ open }: { open: boolean }): JSX.Element {
