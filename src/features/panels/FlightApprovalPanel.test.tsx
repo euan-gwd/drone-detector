@@ -155,7 +155,8 @@ describe("FlightApprovalPanel", () => {
   it("collapsing the Plans section hides the approval rows", () => {
     useFlightStore.setState({ approvals: [makeApproval("drn-1", { id: "PLAN-X" })] });
     render(<FlightApprovalPanel />);
+    expect(screen.getByText("PLAN-X")).toBeVisible();
     fireEvent.click(screen.getByText("Flight Plan Approvals"));
-    expect(screen.queryByText("PLAN-X")).not.toBeInTheDocument();
+    expect(screen.getByText("PLAN-X")).not.toBeVisible();
   });
 });

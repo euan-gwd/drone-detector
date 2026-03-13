@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import DroneStatusPanel from "./DroneStatusPanel";
 import { useDroneStore } from "../../store/droneStore";
 import { useFlightStore } from "../../store/flightStore";
@@ -132,7 +132,7 @@ describe("DroneStatusPanel", () => {
     render(<DroneStatusPanel />);
 
     expect(screen.getByText("Aircraft:")).toBeInTheDocument();
-    expect(screen.getByText("Bravo")).toBeInTheDocument();
+    expect(within(screen.getByText("Aircraft:").parentElement as HTMLElement).getByText("Bravo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^land$/i })).toBeInTheDocument();
   });
 
@@ -141,11 +141,11 @@ describe("DroneStatusPanel", () => {
       drones: { "drn-1": makeDrone("drn-1") },
     });
     render(<DroneStatusPanel />);
-    expect(screen.getByText("Drone List")).toBeInTheDocument();
+    expect(screen.getByText("Drone List")).toBeVisible();
 
     fireEvent.click(screen.getByText("Drone Status"));
 
-    expect(screen.queryByText("Drone List")).not.toBeInTheDocument();
+    expect(screen.getByText("Drone List")).not.toBeVisible();
   });
 
   it("re-expands after being collapsed", () => {

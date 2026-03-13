@@ -8,11 +8,21 @@ import { Icon, Style, Fill, Stroke, Text } from "ol/style";
 import type { SensorTower, CameraState } from "../../types/sensorTower";
 import { createTowerIconSvg, svgToDataUrl } from "./towerIcon";
 
+const towerStyleCache = new Map<string, Style>();
+const rangeStyleCache = new Map<string, Style>();
+const fovStyleCache = new Map<string, Style>();
+
 const towerStyle = (
   status: SensorTower["status"],
   name: string,
   selected: boolean,
 ): Style => {
+  const styleKey = `${status}|${name}|${selected ? "1" : "0"}`;
+  const cachedStyle = towerStyleCache.get(styleKey);
+  if (cachedStyle) {
+    return cachedStyle;
+  }
+
   let fillColor = status === "maintenance" ? "#fb923c" : status === "offline" ? "#64748b" : "#0ea5e9";
 
   if (status === "error") {
@@ -22,7 +32,7 @@ const towerStyle = (
   const svg = createTowerIconSvg(fillColor, selected);
   const dataUrl = svgToDataUrl(svg);
 
-  return new Style({
+  const style = new Style({
     image: new Icon({
       src: dataUrl,
       scale: 1,
@@ -38,13 +48,22 @@ const towerStyle = (
       offsetY: 12
     })
   });
+
+  towerStyleCache.set(styleKey, style);
+  return style;
 };
 
 const rangeRingStyle = (ringIndex: number, towerColor: string): Style => {
+  const styleKey = `${ringIndex}|${towerColor}`;
+  const cachedStyle = rangeStyleCache.get(styleKey);
+  if (cachedStyle) {
+    return cachedStyle;
+  }
+
   const alpha = Math.max(0.1, 0.3 - (ringIndex * 0.05)); // Fade outer rings
   const strokeWidth = ringIndex === 0 ? 2 : 1; // Thicker inner ring
 
-  return new Style({
+  const style = new Style({
     stroke: new Stroke({
       color: `${towerColor}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`,
       width: strokeWidth,
@@ -54,16 +73,28 @@ const rangeRingStyle = (ringIndex: number, towerColor: string): Style => {
       color: `${towerColor}${Math.round(alpha * 0.3 * 255).toString(16).padStart(2, '0')}`
     })
   });
+
+  rangeStyleCache.set(styleKey, style);
+  return style;
 };
 
 const cameraFovStyle = (camera: CameraState): Style => {
+  const styleKey = camera.status;
+  const cachedStyle = fovStyleCache.get(styleKey);
+  if (cachedStyle) {
+    return cachedStyle;
+  }
+
   const cameraColor = camera.status === "active" ? "#10b981" : "#6b7280";
 
-  return new Style({
+  const style = new Style({
     fill: new Fill({
       color: `${cameraColor}30` // 30 for ~20% opacity
     }),
   });
+
+  fovStyleCache.set(styleKey, style);
+  return style;
 };
 
 // Feature ID conventions to match drone system patterns

@@ -30,6 +30,26 @@ export class DroneSocketClient {
       payload: { connected: true }
     });
 
+    // Emit an immediate snapshot so map layers paint without waiting for the
+    // first simulator interval tick and probabilistic tower updates.
+    this.drones.forEach((drone) => {
+      this.emit({
+        version: 1,
+        type: "drone.position",
+        timestamp: new Date().toISOString(),
+        payload: { drone }
+      });
+    });
+
+    this.towers.forEach((tower) => {
+      this.emit({
+        version: 1,
+        type: "tower.position",
+        timestamp: new Date().toISOString(),
+        payload: { tower }
+      });
+    });
+
     this.timerId = window.setInterval(() => {
       const events = createMockEventBatch(this.drones, this.towers);
       this.drones = events

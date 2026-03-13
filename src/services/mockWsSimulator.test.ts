@@ -81,10 +81,14 @@ describe("notification titles", () => {
   const towers = mockInitialTowers();
 
   // Each drone consumes 5 Math.random() calls (speed, lat, lon, altitude, heading).
-  // With 3 drones that is 15 calls before the notification check:
-  //   index 15 → notification trigger check (> 0.72 fires)
-  //   index 16 → drone selection (Math.floor(x * 3))
-  //   index 17 → level selection when drone is online (Math.floor(x * 2): 0 = info, 1 = success)
+  // With 3 drones that is 15 calls before the non-drone branches.
+  // The current simulator then does:
+  //   index 15 → tower.position branch
+  //   index 16 → tower.camera branch
+  //   index 17-18 → tower.detection checks for the 2 towers
+  //   index 19 → notification trigger check (> 0.72 fires)
+  //   index 20 → drone selection (Math.floor(x * 3))
+  //   index 21 → level selection when drone is online (Math.floor(x * 2): 0 = info, 1 = success)
   //
   // drn-102 starts at 14 m/s; with neutral drift (0.5) it stays at 14 → warning status.
   // drn-304 (11 m/s) and drn-401 (10 m/s) stay online with neutral drift.
@@ -108,8 +112,7 @@ describe("notification titles", () => {
   }
 
   it("warning notifications carry title 'Speed caution'", () => {
-    // Use higher indices to ensure we're past all tower generation random calls
-    mockRandom({ 30: 0.8, 31: 0.1 });
+    mockRandom({ 19: 0.8, 20: 0.1 });
     const notif = extractNotification(createMockEventBatch(initial, towers));
     expect(notif).not.toBeNull();
     expect(notif!.level).toBe("warning");
@@ -118,8 +121,7 @@ describe("notification titles", () => {
   });
 
   it("info notifications carry title 'Flight update'", () => {
-    // Use higher indices to ensure we're past all tower generation random calls
-    mockRandom({ 30: 0.8, 31: 0.99, 32: 0.1 });
+    mockRandom({ 19: 0.8, 20: 0.99, 21: 0.1 });
     const notif = extractNotification(createMockEventBatch(initial, towers));
     expect(notif).not.toBeNull();
     expect(notif!.level).toBe("info");
@@ -127,8 +129,7 @@ describe("notification titles", () => {
   });
 
   it("success notifications carry title 'Flight update'", () => {
-    // Use higher indices to ensure we're past all tower generation random calls
-    mockRandom({ 30: 0.8, 31: 0.99, 32: 0.9 });
+    mockRandom({ 19: 0.8, 20: 0.99, 21: 0.9 });
     const notif = extractNotification(createMockEventBatch(initial, towers));
     expect(notif).not.toBeNull();
     expect(notif!.level).toBe("success");
@@ -136,7 +137,7 @@ describe("notification titles", () => {
   });
 
   it("notification events include droneName and droneId", () => {
-    mockRandom({ 30: 0.8, 31: 0.1 }); // warning from drn-102
+    mockRandom({ 19: 0.8, 20: 0.1 }); // warning from drn-102
     const notif = extractNotification(createMockEventBatch(initial, towers));
     expect(notif).not.toBeNull();
     expect(notif!.droneName).toBe("North Watcher");

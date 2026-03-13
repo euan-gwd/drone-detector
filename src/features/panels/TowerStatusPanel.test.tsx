@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import TowerStatusPanel from "./TowerStatusPanel";
 import { useTowerStore } from "../../store/towerStore";
 import type { SensorTower } from "../../types/sensorTower";
@@ -111,11 +111,11 @@ describe("TowerStatusPanel", () => {
 
     expect(useTowerStore.getState().selectedTowerId).toBe("twr-1");
     expect(screen.getByText("Tower Details")).toBeInTheDocument();
-    expect(screen.getByText("Cameras")).toBeInTheDocument();
-    expect(screen.getByText("1/2 online")).toBeInTheDocument();
+    expect(screen.getByText("Cameras:")).toBeInTheDocument();
+    expect(screen.getAllByText(/1\s*\/\s*2\s+online/i)).toHaveLength(2);
     expect(screen.getByText("North Cam")).toBeInTheDocument();
     expect(screen.getByText("South Cam")).toBeInTheDocument();
-    expect(screen.getByText("Sensors")).toBeInTheDocument();
+    expect(screen.getByText("Sensors:")).toBeInTheDocument();
     expect(screen.getByText("radar")).toBeInTheDocument();
     expect(screen.getByText("lidar")).toBeInTheDocument();
     expect(screen.queryByText("Detections:")).not.toBeInTheDocument();
@@ -133,9 +133,9 @@ describe("TowerStatusPanel", () => {
 
     render(<TowerStatusPanel />);
 
-    expect(screen.getByText("Tower Bravo")).toBeInTheDocument();
+    expect(within(screen.getByText("Tower:").parentElement as HTMLElement).getByText("Tower Bravo")).toBeInTheDocument();
     expect(screen.getByText("Cameras:")).toBeInTheDocument();
     expect(screen.getByText("Sensors:")).toBeInTheDocument();
-    expect(screen.getAllByText("0/0 online")).toHaveLength(2);
+    expect(screen.getAllByText(/0\s*\/\s*0\s+online/i)).toHaveLength(2);
   });
 });

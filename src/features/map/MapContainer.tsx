@@ -25,12 +25,31 @@ function MapContainer(): JSX.Element {
   const popupContainerRef = useRef<HTMLDivElement | null>(null);
   // Keep Overlay instance in a ref so effects can update it without re-rendering.
   const popupOverlayRef = useRef<Overlay | null>(null);
+  const droneLayerSourceRef = useRef<VectorSource | null>(null);
+  const towerLayerSourceRef = useRef<VectorSource | null>(null);
+  const rangeLayerSourceRef = useRef<VectorSource | null>(null);
+  const fovLayerSourceRef = useRef<VectorSource | null>(null);
 
-  // Layer sources
-  const droneLayerSource = new VectorSource();
-  const towerLayerSource = new VectorSource();
-  const rangeLayerSource = new VectorSource();
-  const fovLayerSource = new VectorSource();
+  if (!droneLayerSourceRef.current) {
+    droneLayerSourceRef.current = new VectorSource();
+  }
+
+  if (!towerLayerSourceRef.current) {
+    towerLayerSourceRef.current = new VectorSource();
+  }
+
+  if (!rangeLayerSourceRef.current) {
+    rangeLayerSourceRef.current = new VectorSource();
+  }
+
+  if (!fovLayerSourceRef.current) {
+    fovLayerSourceRef.current = new VectorSource();
+  }
+
+  const droneLayerSource = droneLayerSourceRef.current;
+  const towerLayerSource = towerLayerSourceRef.current;
+  const rangeLayerSource = rangeLayerSourceRef.current;
+  const fovLayerSource = fovLayerSourceRef.current;
 
   // Drone state
   const drones = useDroneStore((state) => state.drones);

@@ -49,9 +49,9 @@ describe("NotificationPanel", () => {
   it("collapses the panel when the header button is clicked", () => {
     useNotificationStore.setState({ items: [makeItem("n1", { title: "Visible Item" })] });
     render(<NotificationPanel />);
-    expect(screen.getByText("Visible Item")).toBeInTheDocument();
+    expect(screen.getByText("Visible Item")).toBeVisible();
     fireEvent.click(screen.getByText("Notifications"));
-    expect(screen.queryByText("Visible Item")).not.toBeInTheDocument();
+    expect(screen.getByText("Visible Item")).not.toBeVisible();
   });
 
   it("re-expands the panel after being collapsed", () => {
