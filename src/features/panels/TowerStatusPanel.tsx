@@ -1,4 +1,4 @@
-import { useState, type JSX } from "react";
+import { Activity, useState, type JSX } from "react";
 import { ChevronDown, Radio } from 'lucide-react';
 import { useTowerStore } from "../../store/towerStore";
 
@@ -62,7 +62,7 @@ function TowerStatusPanel(): JSX.Element {
         <span className="flex-1">Tower Status</span>
         <ChevronDown className={`h-4 w-4 text-white/60 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && (
+      <Activity mode={open ? "visible" : "hidden"}>
         <div className="px-4 py-3">
           {/* Summary */}
           <div className="text-xs text-slate-300 mb-3">
@@ -196,7 +196,7 @@ function TowerStatusPanel(): JSX.Element {
             </p>
           )}
         </div>
-      )}
+      </Activity>
     </section>
   );
 }

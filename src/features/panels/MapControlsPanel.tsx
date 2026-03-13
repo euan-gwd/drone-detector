@@ -1,4 +1,4 @@
-import { useState, type JSX } from "react";
+import { Activity, useState, type JSX } from "react";
 import { ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { useUiStore } from "../../store/uiStore";
 
@@ -22,7 +22,7 @@ function MapControlsPanel(): JSX.Element {
         <span className="flex-1">Map Controls</span>
         <ChevronDown className={`h-4 w-4 text-white/60 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && (
+      <Activity mode={open ? "visible" : "hidden"}>
         <div className="px-4 py-3">
           <div className="space-y-3">
             {/* Range Markers Toggle */}
@@ -93,7 +93,7 @@ function MapControlsPanel(): JSX.Element {
             </div>
           </div>
         </div>
-      )}
+      </Activity>
     </section>
   );
 }

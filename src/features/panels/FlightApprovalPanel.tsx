@@ -1,4 +1,4 @@
-import { useState, type JSX } from "react";
+import { Activity, useState, type JSX } from "react";
 import type { ReactNode } from "react";
 import { BadgeCheck, ChevronDown, Send } from "lucide-react";
 import { useDroneStore } from "../../store/droneStore";
@@ -86,7 +86,7 @@ function FlightApprovalPanel(): JSX.Element {
     <section className="overflow-hidden rounded-lg border border-slate-600 bg-surfaceAlt shadow-panel">
       {/* ── Flight Plan Approvals ── */}
       <SectionHeader title="Flight Plan Approvals" open={planOpen} onToggle={() => setPlanOpen((v) => !v)} icon={checkIcon} />
-      {planOpen && (
+      <Activity mode={planOpen ? "visible" : "hidden"}>
         <div className="border-b border-slate-700 px-4 py-3">
           {approvals.length > 0 ? (
             <div className="max-h-[15rem] overflow-y-auto space-y-3 pr-1">
@@ -113,11 +113,11 @@ function FlightApprovalPanel(): JSX.Element {
             <p className="text-xs text-slate-400">No active flight plans.</p>
           )}
         </div>
-      )}
+      </Activity>
 
       {/* ── Flight Approval(s) ── */}
       <SectionHeader title="Flight Approval(s)" open={approvalOpen} onToggle={() => setApprovalOpen((v) => !v)} icon={droneIcon} />
-      {approvalOpen && (
+      <Activity mode={approvalOpen ? "visible" : "hidden"}>
         <div className="px-4 py-3">
           {current ? (
             <>
@@ -137,7 +137,7 @@ function FlightApprovalPanel(): JSX.Element {
             <p className="text-xs text-slate-400">Select a drone on the map to inspect its details.</p>
           )}
         </div>
-      )}
+      </Activity>
     </section>
   );
 }

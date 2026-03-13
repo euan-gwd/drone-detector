@@ -1,4 +1,4 @@
-import { useState, type JSX } from "react";
+import { Activity, useState, type JSX } from "react";
 import { ChevronDown, Zap } from 'lucide-react';
 import { useDroneStore } from "../../store/droneStore";
 import { useFlightStore } from "../../store/flightStore";
@@ -102,7 +102,7 @@ function DroneStatusPanel(): JSX.Element {
         <span className="flex-1">Drone Status</span>
         <ChevronDown className={`h-4 w-4 text-white/60 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && (
+      <Activity mode={open ? "visible" : "hidden"}>
         <div className="px-4 py-3">
           <div className="text-xs text-slate-300 mb-3">
             <div className="flex justify-between items-baseline mb-1">
@@ -232,7 +232,7 @@ function DroneStatusPanel(): JSX.Element {
             <p className="text-xs text-slate-400 border-t border-slate-600 pt-2">No drones available.</p>
           )}
         </div>
-      )}
+      </Activity>
     </section>
   );
 }
