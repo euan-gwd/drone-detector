@@ -10,6 +10,7 @@ import { createTowerIconSvg, svgToDataUrl } from "./towerIcon";
 
 const towerStyle = (
   status: SensorTower["status"],
+  name: string,
   selected: boolean,
 ): Style => {
   let fillColor = status === "maintenance" ? "#fb923c" : status === "offline" ? "#64748b" : "#0ea5e9";
@@ -28,6 +29,13 @@ const towerStyle = (
       anchor: [0.5, 0.5],
       anchorXUnits: 'fraction',
       anchorYUnits: 'fraction'
+    }),
+    text: new Text({
+      text: name,
+      font: "12px Arial",
+      fill: new Fill({ color: "#ffffff" }),
+      stroke: new Stroke({ color: "#000000", width: 2 }),
+      offsetY: 12
     })
   });
 };
@@ -55,17 +63,17 @@ const cameraFovStyle = (camera: CameraState): Style => {
     fill: new Fill({
       color: `${cameraColor}30` // 30 for ~20% opacity
     }),
-    stroke: new Stroke({
-      color: cameraColor,
-      width: 2
-    }),
-    text: new Text({
-      text: camera.name,
-      font: "12px Arial",
-      fill: new Fill({ color: "#ffffff" }),
-      stroke: new Stroke({ color: "#000000", width: 2 }),
-      offsetY: -10
-    })
+    // stroke: new Stroke({
+    //   color: cameraColor,
+    //   width: 2
+    // }),
+    // text: new Text({
+    //   text: camera.name,
+    //   font: "12px Arial",
+    //   fill: new Fill({ color: "#ffffff" }),
+    //   stroke: new Stroke({ color: "#000000", width: 2 }),
+    //   offsetY: -10
+    // })
   });
 };
 
@@ -145,7 +153,7 @@ export const syncTowerFeatures = (
         towerName: tower.name
       });
       feature.setId(featureId);
-      feature.setStyle(towerStyle(tower.status, selected));
+      feature.setStyle(towerStyle(tower.status, tower.name, selected));
       source.addFeature(feature);
       return;
     }
@@ -156,7 +164,7 @@ export const syncTowerFeatures = (
       geometry.setCoordinates(coordinate);
     }
     existing.set("towerName", tower.name);
-    existing.setStyle(towerStyle(tower.status, selected));
+    existing.setStyle(towerStyle(tower.status, tower.name, selected));
   });
 };
 
