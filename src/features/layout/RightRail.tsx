@@ -18,11 +18,11 @@ function RightRail(): JSX.Element {
             {connected ? "Connected" : "Disconnected"}
           </span>
         </div>
+        <NotificationPanel />
         <FlightApprovalPanel />
         <MapControlsPanel />
         <TowerStatusPanel />
         <DroneStatusPanel />
-        <NotificationPanel />
       </div>
     </aside>
   );

@@ -89,7 +89,7 @@ describe("FlightApprovalPanel", () => {
     expect(screen.queryByRole("button", { name: /end flight/i })).not.toBeInTheDocument();
   });
 
-  it("shows 'Request Approval' when the plan is pending", () => {
+  it("shows approval status details for selected drone", () => {
     useDroneStore.setState({
       drones: { "drn-1": makeDrone("drn-1") },
       selectedDroneId: "drn-1",
@@ -98,37 +98,7 @@ describe("FlightApprovalPanel", () => {
       approvals: [makeApproval("drn-1", { status: "pending" })],
     });
     render(<FlightApprovalPanel />);
-    expect(screen.getByRole("button", { name: /request approval/i })).toBeInTheDocument();
-  });
-
-  it("shows 'Take Off' when the drone is landed and the plan is approved", () => {
-    useDroneStore.setState({
-      drones: { "drn-1": makeDrone("drn-1", { status: "offline" }) },
-      selectedDroneId: "drn-1",
-    });
-    useFlightStore.setState({ approvals: [makeApproval("drn-1")] });
-    render(<FlightApprovalPanel />);
-    expect(screen.getByRole("button", { name: /take off/i })).not.toBeDisabled();
-  });
-
-  it("shows 'Land' when the drone is airborne and the plan is approved", () => {
-    useDroneStore.setState({
-      drones: { "drn-1": makeDrone("drn-1", { status: "online" }) },
-      selectedDroneId: "drn-1",
-    });
-    useFlightStore.setState({ approvals: [makeApproval("drn-1")] });
-    render(<FlightApprovalPanel />);
-    expect(screen.getByRole("button", { name: /land/i })).not.toBeDisabled();
-  });
-
-  it("enables 'End Flight' when the drone is landed", () => {
-    useDroneStore.setState({
-      drones: { "drn-1": makeDrone("drn-1", { status: "offline" }) },
-      selectedDroneId: "drn-1",
-    });
-    useFlightStore.setState({ approvals: [makeApproval("drn-1")] });
-    render(<FlightApprovalPanel />);
-    expect(screen.getByRole("button", { name: /end flight/i })).not.toBeDisabled();
+    expect(screen.getByText("Pending")).toBeInTheDocument();
   });
 
   it("shows 'Ready' flight status when drone is offline and approval is pending", () => {
@@ -161,30 +131,17 @@ describe("FlightApprovalPanel", () => {
     expect(screen.getByText("Ready")).toBeInTheDocument();
   });
 
-  it("disables 'End Flight' when the drone is still airborne", () => {
+  it("does not render action buttons; controls live in Drone Status", () => {
     useDroneStore.setState({
       drones: { "drn-1": makeDrone("drn-1", { status: "online" }) },
       selectedDroneId: "drn-1",
     });
     useFlightStore.setState({ approvals: [makeApproval("drn-1")] });
     render(<FlightApprovalPanel />);
-    expect(screen.getByRole("button", { name: /end flight/i })).toBeDisabled();
-  });
-
-  it("disables action buttons while an action is busy", () => {
-    useDroneStore.setState({
-      drones: { "drn-1": makeDrone("drn-1", { status: "online" }) },
-      selectedDroneId: "drn-1",
-    });
-    useFlightStore.setState({
-      approvals: [makeApproval("drn-1")],
-      busyAction: "land",
-    });
-    render(<FlightApprovalPanel />);
-    screen
-      .getAllByRole("button")
-      .filter((b) => b.textContent !== "Flight Plan Approvals" && b.textContent !== "Flight Approval(s)")
-      .forEach((btn) => expect(btn).toBeDisabled());
+    expect(screen.queryByRole("button", { name: /request approval/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /take off/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^land$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /end flight/i })).not.toBeInTheDocument();
   });
 
   it("renders approval plan comments", () => {
