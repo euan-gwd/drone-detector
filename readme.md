@@ -54,29 +54,36 @@ src/
   features/
     layout/
       LeftSidebar.tsx          # Navigation shell (desktop only)
-      RightRail.tsx            # Right panel container + connection badge
+      RightRail.tsx            # Right-side panel stack + system status
     map/
-      MapContainer.tsx         # OpenLayers init, click handler, overlay, feature sync
+      MapContainer.tsx         # OpenLayers init, click handling, overlay + layer sync
       DronePopup.tsx           # Map-anchored popup card (shown on drone click)
+      TowerPopup.tsx           # Tower telemetry popup (shown on tower click)
       mapLayers.ts             # Drone feature sync + marker colour logic
+      towerLayers.ts           # Tower markers, range rings, camera FOV sectors
       droneIcon.ts             # SVG drone icon generator (data-URL)
+      towerIcon.ts             # SVG tower icon generator (data-URL)
     panels/
       DroneStatusPanel.tsx     # Telemetry display for selected drone
+      TowerStatusPanel.tsx     # Tower list, summary, selected tower details
+      MapControlsPanel.tsx     # Range marker / camera arc visibility toggles
       FlightApprovalPanel.tsx  # Full flight workflow UI
       NotificationPanel.tsx    # Live notification feed
   hooks/
-    useDroneWebSocket.ts       # Routes WebSocket events to Zustand stores
+    useDroneWebSocket.ts       # Routes drone + tower events to Zustand stores
   services/
     websocketClient.ts         # DroneSocketClient pub/sub event hub
-    mockWsSimulator.ts         # Realistic tick-based drone telemetry generator
+    mockWsSimulator.ts         # Tick-based drone/tower telemetry + events
   store/
     droneStore.ts              # Drone positions, status, control overrides
+    towerStore.ts              # Tower state, detections, camera states, overrides
     flightStore.ts             # Flight approval state machine
     notificationStore.ts       # Notification feed (max 30 items)
-    uiStore.ts                 # Connection state
+    uiStore.ts                 # Connection + map visualization toggles
   types/
     drone.ts                   # Drone, FlightApproval, NotificationItem types
-    websocket.ts               # Event envelope types and union
+    sensorTower.ts             # Tower, sensor, camera, detection types
+    websocket.ts               # Typed event envelope + discriminated union
   utils/
     statusColors.ts            # Tailwind colour helpers for status values
   test/
@@ -101,12 +108,12 @@ Three-column desktop layout, stacks vertically on mobile:
 ```
 
 - **LeftSidebar** — static navigation sections (Home, Flyer, Aircraft, Organisation); hidden below `lg` breakpoint.
-- **MapContainer** — CartoDB Dark tile layer, vector overlay for drone markers. Centre: Oxford, UK (51.752°N, −1.258°W), zoom 11. Click selects a drone and opens a telemetry popup pinned above its icon; clicking empty map space closes it. Uses `startTransition()` to keep interactions responsive. Wrapped in an `ErrorBoundary` so a map crash doesn't break the rest of the UI.
-- **RightRail** — stacks Drone Status, Flight Approval, and Notification panels. Shows WebSocket connection badge at the top.
+- **MapContainer** — CartoDB Dark tile layer with separate vector layers for range rings, camera FOV arcs, drones, and towers. Centre: Oxford, UK (51.752°N, −1.258°W), zoom 11. Click selects either a drone or a tower and opens a telemetry popup pinned above the marker; clicking empty map space clears selection. Uses `startTransition()` to keep interactions responsive. Wrapped in an `ErrorBoundary` so a map crash doesn't break the rest of the UI.
+- **RightRail** — stacks Flight Approval, Map Controls, Tower Status, Drone Status, and Notification panels. Shows connection state at the top.
 
 ### State Management
 
-Four independent Zustand stores. Cross-store communication uses `.getState()` in async actions (not hooks).
+Five independent Zustand stores. Cross-store communication uses `.getState()` in async actions (not hooks).
 
 #### `droneStore`
 - `drones` — dict keyed by drone ID, updated on every WebSocket tick.
@@ -129,25 +136,33 @@ Four independent Zustand stores. Cross-store communication uses `.getState()` in
 | `end-plan` | approved → pending | — |
 | `view` | — | no-op |
 
+#### `towerStore`
+- `towers` — dictionary of `SensorTower` keyed by tower ID.
+- `selectedTowerId` — currently inspected tower.
+- `controlStatusByTower` — operator tower-status overrides persisted to `sessionStorage`.
+- `detectionsByTower` — recent detections per tower (TTL cleanup after 5 minutes).
+- `cameraStatesByTower` — latest real-time camera states for FOV visualization.
+- `upsertTower()` / `updateTowerStatus()` — merge telemetry while honoring local overrides.
+- `setControlStatus()` — sets or clears local status override for immediate UI feedback.
+- `addDetection()` / `updateCameraState()` — append detections and update camera azimuth/elevation updates.
+
 #### `notificationStore`
 - Holds up to 30 notifications, newest first. No persistence; cleared on page reload.
 
 #### `uiStore`
-- Single boolean `connected`, toggled by the WebSocket hook.
+- `connected` plus map-display toggles: `showRangeMarkers` and `showCameraArcs`.
 
 ### Real-time Data Flow
 
-```
-mockWsSimulator.ts
-  └─► DroneSocketClient (pub/sub, 1.2 s tick)
-        └─► useDroneWebSocket (hook, mounted at App root)
-              ├─► droneStore.upsertDrone()
-              ├─► droneStore.updateDroneStatus()
-              ├─► notificationStore.addNotification()
-              └─► uiStore.setConnected()
-```
+- `mockWsSimulator.ts` generates event batches every 1.2 seconds.
+- `DroneSocketClient` publishes those events to subscribers.
+- `useDroneWebSocket` consumes events and fans them out to stores:
+- `droneStore.upsertDrone()` and `droneStore.updateDroneStatus()`
+- `towerStore.upsertTower()`, `towerStore.updateTowerStatus()`, `towerStore.addDetection()`, `towerStore.updateCameraState()`
+- `notificationStore.addNotification()`
+- `uiStore.setConnected()`
 
-Each tick drifts position (±200 m), speed (±1 m/s, min 3), altitude (±2 m, min 20), and heading (±9°). Status is set to `"warning"` if speed > 13.6 m/s, else `"online"`. There is a 28% chance per tick of generating a structured notification with `droneName` and `droneId` as separate fields (no regex parsing needed in the UI).
+Each tick drifts drone position (about ±200 m), speed (about ±1 m/s, min 3), altitude (±2 m, min 20), and heading (±9°). Drone status is set to `"warning"` if speed > 13.6 m/s, else `"online"`. The simulator also emits tower events (position snapshots, camera movements, and occasional detection events) plus a 28% chance per tick of a structured notification (`droneName` and `droneId` fields).
 
 To connect a real backend, set `VITE_WS_URL` (see Environment below). The hook, stores, and event schema are already structured for a live API.
 
@@ -156,7 +171,7 @@ To connect a real backend, set `VITE_WS_URL` (see Environment below). The hook, 
 ```ts
 {
   version: 1,
-  type: "drone.position" | "drone.status" | "notification.created" | "connection.state",
+  type: "drone.position" | "drone.status" | "tower.position" | "tower.status" | "tower.detection" | "tower.camera" | "notification.created" | "connection.state",
   timestamp: string,
   payload: object
 }
@@ -168,16 +183,27 @@ To connect a real backend, set `VITE_WS_URL` (see Environment below). The hook, 
 
 All panels share a collapsible design — dark green header bar with icon, title, and rotating chevron. Click the header to expand or collapse.
 
-### Map Drone Popup
+### Map Controls
 
-Clicking a drone marker opens a compact popup card pinned directly above the icon on the map:
+- Collapsible panel with toggles for map overlays.
+- **Range Markers** — renders 1-5 km concentric tower rings.
+- **Camera Arcs** — renders live camera field-of-view sectors.
+- Both toggles are off by default for a cleaner map.
 
-- Moves with the drone in real time — position syncs on every 1.2 s telemetry tick via an OpenLayers `Overlay`.
-- Header shows the drone name and an **×** close button.
-- Body shows: ID, Speed (m/s), Altitude (m), Heading (°), and colour-coded Status.
-- Closes via the × button (calls `selectDrone(null)` wrapped in `startTransition`) or by clicking empty map space.
-- Clicking inside the popup does **not** propagate to the map (`stopEvent: true` on the Overlay).
-- Implemented in `DronePopup.tsx` — a pure presentational component with no map or store dependencies.
+### Tower Status
+
+- Summary counts for Online, Offline, Maintenance, and Error towers.
+- Selectable tower list with online towers prioritized.
+- Per-tower details include status, metadata, camera availability, and sensor availability.
+
+### Map Popups
+
+The map supports two context popups:
+
+- **DronePopup** — drone telemetry card (speed, altitude, heading, approval-aware status).
+- **TowerPopup** — tower telemetry card (range, active sensors/cameras, signal %, recent detections).
+- Popups are rendered through an OpenLayers `Overlay` and track marker movement in real time.
+- Drone selection takes priority if features overlap.
 
 ### Drone Status
 
@@ -210,6 +236,17 @@ Two sections in one panel:
 - Colour-coded by level: `info` (blue), `success` (green), `warning` (amber), `error` (red).
 - Item count shown in the header when collapsed.
 - Supports structured notifications (`droneName`/`droneId` fields) with regex fallback for legacy message formats.
+
+### Drone Popup Details
+
+Clicking a drone marker opens a compact popup card pinned directly above the icon on the map:
+
+- Moves with the drone in real time — position syncs on every 1.2 s telemetry tick via an OpenLayers `Overlay`.
+- Header shows the drone name and an **×** close button.
+- Body shows: ID, Speed (m/s), Altitude (m), Heading (°), and colour-coded Status.
+- Closes via the × button (calls `selectDrone(null)` wrapped in `startTransition`) or by clicking empty map space.
+- Clicking inside the popup does **not** propagate to the map (`stopEvent: true` on the Overlay).
+- Implemented in `DronePopup.tsx` — a pure presentational component with no map or store dependencies.
 
 ---
 
@@ -279,9 +316,31 @@ interface NotificationItem {
 }
 ```
 
+### `src/types/sensorTower.ts`
+
+```ts
+type TowerStatus = "online" | "offline" | "maintenance" | "error"
+type SensorStatus = "active" | "inactive" | "error" | "calibrating"
+
+interface SensorTower {
+  id: string; name: string;
+  lat: number; lon: number;
+  altitudeM: number; range: number;
+  status: TowerStatus; updatedAt: string;
+  sensors: TowerSensor[];
+  cameras: CameraState[];
+}
+
+interface DetectionData {
+  id: string; towerId: string; sensorId: string; droneId: string;
+  distance: number; bearing: number; confidence: number; signalStrength: number;
+  timestamp: string;
+}
+```
+
 ### `src/types/websocket.ts`
 
-Typed event envelope with a discriminated union (`DroneSocketEvent`) covering all four event types. `DroneSocketClient` is fully typed against this union.
+Typed event envelope with a discriminated union (`DroneSocketEvent`) covering drone, tower, notification, and connection events. `DroneSocketClient` is fully typed against this union.
 
 ---
 
@@ -307,7 +366,8 @@ Tests are co-located with source files (`*.test.ts` / `*.test.tsx`). Coverage sp
 
 ```bash
 npm test          # watch mode
-npm run test:run  # single pass (CI)
+npm test -- --run # single pass (CI)
+npm run test:ui   # Vitest browser UI
 ```
 
 Vitest runs in `jsdom` environment with globals enabled. `src/test/setup.ts` imports `@testing-library/jest-dom` for custom matchers.
@@ -323,7 +383,7 @@ VITE_WS_MODE=mock           # "mock" uses the local simulator
 VITE_WS_URL=ws://localhost:8080  # real backend WebSocket URL
 ```
 
-Default behaviour without a `.env` file: mock simulator is used.
+Current default behavior uses the local simulator. `VITE_WS_URL` is documented for real-backend integration work.
 
 ---
 
