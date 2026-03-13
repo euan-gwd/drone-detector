@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { BadgeCheck, ChevronDown, Send } from "lucide-react";
 import { useDroneStore } from "../../store/droneStore";
 import { useFlightStore } from "../../store/flightStore";
-import type { FlightApproval } from "../../types/drone";
 import { flightApprovalStatusColor } from "../../utils/statusColors";
 
 function Row({ label, value }: { label: string; value: ReactNode }): JSX.Element {
