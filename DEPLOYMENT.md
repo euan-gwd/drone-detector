@@ -1,98 +1,180 @@
 # Deployment Guide
 
-## Deploying to Netlify
+## Target Platform
 
-This project is configured for easy deployment to Netlify. Follow these steps:
+This app is set up for static deployment on Netlify.
 
-### Option 1: Deploy via Netlify UI (Recommended)
+It is a Vite + React single-page application, so deployment is straightforward:
 
-1. **Push your code to GitHub**
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin https://github.com/YOUR_USERNAME/drone-detector.git
-   git push -u origin main
-   ```
+- Build the app with `npm run build`
+- Publish the generated `dist/` directory
+- Redirect all routes to `index.html` for SPA routing
 
-2. **Connect to Netlify**
-   - Go to [Netlify](https://app.netlify.com/)
-   - Click "Add new site" → "Import an existing project"
-   - Choose GitHub and select your repository
-   - Netlify will auto-detect the build settings from `netlify.toml`
-   - Click "Deploy site"
+Those settings already exist in `netlify.toml`.
 
-3. **Custom Domain (Optional)**
-   - Go to Site settings → Domain management
-   - Add your custom domain or use the provided netlify.app subdomain
+## Prerequisites
 
-### Option 2: Deploy via Netlify CLI
+- Node.js 20
+- npm
+- A Netlify account
+- A Git repository connected to GitHub, GitLab, or Bitbucket if you want automatic deploys
 
-1. **Install Netlify CLI**
-   ```bash
-   npm install -g netlify-cli
-   ```
+## Local Verification Before Deploying
 
-2. **Login to Netlify**
-   ```bash
-   netlify login
-   ```
+Run the same checks locally before pushing a deployment:
 
-3. **Initialize and Deploy**
-   ```bash
-   netlify init
-   netlify deploy --prod
-   ```
+```bash
+npm install
+npm test
+npm run build
+```
 
-### Build Configuration
+If the production build succeeds, Vite will output the static site into `dist/`.
 
-The project uses the following build settings (defined in `netlify.toml`):
+## Environment Variables
 
-- **Build command**: `npm run build`
-- **Publish directory**: `dist`
-- **Node version**: 20
+The app currently supports these client-side environment variables:
 
-### Environment Variables
+```bash
+VITE_WS_MODE=mock
+VITE_WS_URL=ws://localhost:8080
+```
 
-Currently, this project runs with a mock WebSocket simulator for demonstration. If you want to connect to a real backend later:
+### Recommended Netlify setup
 
-1. Go to Site settings → Environment variables
-2. Add your variables (e.g., `VITE_WS_URL`)
-3. Update your code to use `import.meta.env.VITE_WS_URL`
-4. Redeploy
+For the current demo deployment, keep the app in mock mode:
 
-### Verification
+```bash
+VITE_WS_MODE=mock
+```
 
-After deployment, test these features:
-- ✅ Map loads correctly
-- ✅ Mock drone data appears
-- ✅ Sidebar panels work
-- ✅ No console errors
+`VITE_WS_URL` is only needed when wiring the UI to a real WebSocket backend.
 
-### Showcase Tips
+### Important notes
 
-To make this project stand out on your GitHub profile:
+- Only variables prefixed with `VITE_` are exposed to the browser.
+- Changing environment variables requires a rebuild and redeploy.
+- Do not put secrets in `VITE_` variables because they are bundled into client code.
 
-1. **Add a live demo badge to README**
-   ```markdown
-   [![Netlify Status](https://api.netlify.com/api/v1/badges/YOUR-SITE-ID/deploy-status)](https://app.netlify.com/sites/YOUR-SITE-NAME/deploys)
-   ```
+## Netlify Configuration In This Repo
 
-2. **Add screenshots** in your README
-3. **Include the live demo link** at the top of your README
-4. **Pin this repository** on your GitHub profile
+This repository already defines Netlify behavior in `netlify.toml`:
 
-### Troubleshooting
+- Build command: `npm run build`
+- Publish directory: `dist`
+- Node version: `20`
+- SPA redirect: `/* -> /index.html` with status `200`
+- Security headers on all routes
+- Long-term caching for built assets under `/assets/*`
 
-**Build fails:** Ensure all dependencies are in `package.json`, not just in dev mode.
+In most cases, you should let Netlify use the file as-is rather than manually overriding settings in the UI.
 
-**Blank page:** Check browser console for errors. May need to update base path in `vite.config.ts`.
+## Deploy Via Netlify UI
 
-**404 errors:** The `netlify.toml` includes SPA redirect rules. Make sure the file is committed.
+1. Push the repository to your Git provider.
+2. In Netlify, choose `Add new site` and import the repository.
+3. Confirm that Netlify picks up `netlify.toml`.
+4. In Site configuration, add any required environment variables.
+5. Start the first deploy.
 
-## Alternative Platforms
+### Recommended build settings
 
-This Vite/React app can also be deployed to:
-- **Vercel**: Similar process, auto-detects Vite
-- **GitHub Pages**: Requires additional config for SPA routing
-- **Cloudflare Pages**: Great performance, similar to Netlify
+If Netlify asks for values explicitly, use:
+
+- Build command: `npm run build`
+- Publish directory: `dist`
+- Node version: `20`
+
+## Deploy Via Netlify CLI
+
+Install the CLI if needed:
+
+```bash
+npm install -g netlify-cli
+```
+
+Authenticate:
+
+```bash
+netlify login
+```
+
+Create or link the site:
+
+```bash
+netlify init
+```
+
+Deploy a preview build:
+
+```bash
+netlify deploy
+```
+
+Deploy to production:
+
+```bash
+netlify deploy --prod
+```
+
+## Post-Deployment Smoke Test
+
+After deployment, verify the following in the browser:
+
+- The app shell loads without a blank screen
+- The OpenLayers map renders correctly
+- Drone and tower mock data appear and continue updating
+- Right-rail panels expand and collapse correctly
+- Refreshing a deep link does not return a `404`
+- Browser console shows no runtime errors related to assets or environment configuration
+
+## Existing Live Deployment
+
+The README currently points to this live site:
+
+- `https://dronedetect.netlify.app/`
+
+If you are replacing that site, confirm that the new Netlify project uses the same environment values and domain configuration before switching traffic.
+
+## Troubleshooting
+
+### Build fails on Netlify
+
+Check the following first:
+
+- Netlify is using Node 20
+- The install step completed successfully
+- `npm run build` works locally
+- No required `VITE_` environment variables are missing
+
+### Site loads but shows a blank page
+
+Usually this means one of the following:
+
+- A runtime error occurred in the browser
+- A built asset failed to load
+- An environment variable is missing or invalid
+
+Open the browser dev tools and inspect the console and network tabs.
+
+### Refreshing a route returns `404`
+
+This app needs SPA fallback routing. Ensure `netlify.toml` is present in the deployed branch and that the redirect rule is being applied.
+
+### Real backend does not connect
+
+If you switch away from mock mode:
+
+- Set `VITE_WS_MODE` appropriately
+- Set `VITE_WS_URL` to the correct WebSocket endpoint
+- Confirm the backend supports `wss://` in production when the site is served over HTTPS
+- Check browser console errors for mixed-content or connection failures
+
+## Deployment Checklist
+
+- Tests pass locally
+- Production build passes locally
+- `netlify.toml` is committed
+- Required `VITE_` variables are configured in Netlify
+- Production deploy completes successfully
+- Smoke test passes on the live URL
