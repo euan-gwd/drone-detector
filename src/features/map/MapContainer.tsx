@@ -46,6 +46,7 @@ function MapContainer(): JSX.Element {
 
   // UI state
   const showRangeMarkers = useUiStore((state) => state.showRangeMarkers);
+  const showCameraArcs = useUiStore((state) => state.showCameraArcs);
 
   const [, startTransition] = useTransition();
 
@@ -185,8 +186,8 @@ function MapContainer(): JSX.Element {
 
   // Sync camera FOV
   useEffect(() => {
-    syncCameraFOV(fovLayerSource, towers, cameraStatesByTower);
-  }, [fovLayerSource, towers, cameraStatesByTower]);
+    syncCameraFOV(fovLayerSource, towers, cameraStatesByTower, showCameraArcs);
+  }, [fovLayerSource, towers, cameraStatesByTower, showCameraArcs]);
 
   // Keep the popup overlay in sync with the selected entity's latest coordinates.
   useEffect(() => {

@@ -237,6 +237,7 @@ export const syncCameraFOV = (
   source: VectorSource,
   towers: Record<string, SensorTower>,
   cameraStates: Record<string, CameraState[]>,
+  showCameraArcs: boolean,
 ): void => {
   const activeTowerIds = new Set(Object.keys(towers));
 
@@ -245,11 +246,15 @@ export const syncCameraFOV = (
     const featureId = String(feature.getId() ?? "");
     if (featureId.startsWith("fov-")) {
       const [, towerId] = featureId.split("-");
-      if (!activeTowerIds.has(towerId)) {
+      if (!activeTowerIds.has(towerId) || !showCameraArcs) {
         source.removeFeature(feature);
       }
     }
   });
+
+  if (!showCameraArcs) {
+    return; // Early exit if camera arcs are disabled
+  }
 
   // Create or update FOV features
   Object.values(towers).forEach((tower) => {
