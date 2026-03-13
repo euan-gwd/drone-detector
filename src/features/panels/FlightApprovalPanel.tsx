@@ -1,9 +1,8 @@
-import { useState, useOptimistic, type JSX } from "react";
+import { Activity, useState, type JSX } from "react";
 import type { ReactNode } from "react";
 import { BadgeCheck, ChevronDown, Send } from "lucide-react";
 import { useDroneStore } from "../../store/droneStore";
 import { useFlightStore } from "../../store/flightStore";
-import type { FlightApproval } from "../../types/drone";
 import { flightApprovalStatusColor } from "../../utils/statusColors";
 
 function Row({ label, value }: { label: string; value: ReactNode }): JSX.Element {
@@ -46,8 +45,6 @@ function FlightApprovalPanel(): JSX.Element {
   const drones = useDroneStore((state) => state.drones);
   const selectedDroneId = useDroneStore((state) => state.selectedDroneId);
   const approvals = useFlightStore((state) => state.approvals);
-  const busyAction = useFlightStore((state) => state.busyAction);
-  const runAction = useFlightStore((state) => state.runAction);
 
   const selectedDrone = selectedDroneId ? drones[selectedDroneId] ?? null : null;
   // React Compiler automatically memoises this — no useMemo() needed.
@@ -55,18 +52,7 @@ function FlightApprovalPanel(): JSX.Element {
     ? (approvals.find((a) => a.aircraftId === selectedDroneId) ?? null)
     : null;
 
-  // React 19 optimistic hook: mirrors `matchedApproval` but applies instant
-  // local updates while the real async `runAction` call is in-flight.
-  // Example: clicking "Request Approval" immediately shows "approved" status
-  // in the UI rather than waiting 900 ms for the simulated network delay.
-  // React reconciles this with the real store value on the next render.
-  const [optimisticApproval, setOptimisticApproval] = useOptimistic(
-    matchedApproval,
-    (state, update: Partial<FlightApproval>) => (state ? { ...state, ...update } : null)
-  );
-
   const current =
-    optimisticApproval ??
     matchedApproval ??
     (selectedDroneId
       ? {
@@ -82,20 +68,7 @@ function FlightApprovalPanel(): JSX.Element {
   // ── Derived state: encodes the full flight state machine for the UI ────────
   // These booleans are the single source of truth for what buttons are enabled
   // or visible. Nothing in the JSX below makes its own eligibility decisions.
-  const isBusy = busyAction !== null;
-  // Disable all actions while a command is processing or no drone is selected
-  const actionsDisabled = isBusy || !selectedDroneId;
   const isApproved = current?.status === "approved";
-  // true when operator must request approval before any flight action is allowed
-  const needsApproval = current?.status === "pending" || current?.status === "actionrequired";
-  // true when the drone is not landed (status !== "offline")
-  const isAirborne = selectedDrone !== null && selectedDrone.status !== "offline";
-  // Land is available only once airborne AND the plan is approved
-  const canLand = isApproved && isAirborne;
-  // Takeoff is available only when on the ground AND the plan is approved
-  const canTakeoff = isApproved && selectedDrone !== null && !isAirborne;
-  // End Flight is available whenever the drone is on the ground (doesn't require approval)
-  const canEndFlight = !!selectedDroneId && !isAirborne;
 
   const isReadyOnGround =
     selectedDrone?.status === "offline" &&
@@ -112,7 +85,7 @@ function FlightApprovalPanel(): JSX.Element {
     <section className="overflow-hidden rounded-lg border border-slate-600 bg-surfaceAlt shadow-panel">
       {/* ── Flight Plan Approvals ── */}
       <SectionHeader title="Flight Plan Approvals" open={planOpen} onToggle={() => setPlanOpen((v) => !v)} icon={checkIcon} />
-      {planOpen && (
+      <Activity mode={planOpen ? "visible" : "hidden"}>
         <div className="border-b border-slate-700 px-4 py-3">
           {approvals.length > 0 ? (
             <div className="max-h-[15rem] overflow-y-auto space-y-3 pr-1">
@@ -139,11 +112,11 @@ function FlightApprovalPanel(): JSX.Element {
             <p className="text-xs text-slate-400">No active flight plans.</p>
           )}
         </div>
-      )}
+      </Activity>
 
       {/* ── Flight Approval(s) ── */}
       <SectionHeader title="Flight Approval(s)" open={approvalOpen} onToggle={() => setApprovalOpen((v) => !v)} icon={droneIcon} />
-      {approvalOpen && (
+      <Activity mode={approvalOpen ? "visible" : "hidden"}>
         <div className="px-4 py-3">
           {current ? (
             <>
@@ -158,54 +131,12 @@ function FlightApprovalPanel(): JSX.Element {
               </div>
               <p className="mt-3 text-xs font-semibold text-slate-300">Comments from the authority</p>
               <p className="mt-0.5 text-xs text-slate-400">{current.comments}</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {/* Button 1: context-sensitive primary action
-                    - Shows "Request Approval" when plan is pending/actionrequired
-                    - Shows "Land"            when airborne and plan is approved
-                    - Shows "Take Off"        when grounded and plan is approved
-                    - Disabled when none of those states apply */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!selectedDroneId) return;
-                    if (needsApproval) {
-                      setOptimisticApproval({ status: "approved" });
-                      void runAction(selectedDroneId, "request-approval");
-                    } else if (canTakeoff) {
-                      void runAction(selectedDroneId, "takeoff");
-                    } else if (canLand) {
-                      void runAction(selectedDroneId, "land");
-                    }
-                  }}
-                  disabled={actionsDisabled || (!needsApproval && !canTakeoff && !canLand)}
-                  className={`rounded px-2 py-1.5 text-xs font-semibold disabled:opacity-40 ${
-                    needsApproval || canTakeoff || canLand
-                      ? "bg-mapGlow text-slate-950 hover:bg-cyan-300"
-                      : "border border-slate-500 text-slate-100 hover:border-mapGlow"
-                  }`}
-                >
-                  {needsApproval ? "Request Approval" : canLand ? "Land" : "Take Off"}
-                </button>
-                {/* Button 2: End Flight — always visible, disabled while airborne.
-                    Resets the plan to "pending" so the operator must request
-                    approval again before the next flight. */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (selectedDroneId) void runAction(selectedDroneId, "end-plan");
-                  }}
-                  disabled={actionsDisabled || !canEndFlight}
-                  className="rounded border border-slate-500 px-2 py-1.5 text-xs text-slate-100 hover:border-mapGlow disabled:opacity-40"
-                >
-                  End Flight
-                </button>
-              </div>
             </>
           ) : (
             <p className="text-xs text-slate-400">Select a drone on the map to inspect its details.</p>
           )}
         </div>
-      )}
+      </Activity>
     </section>
   );
 }

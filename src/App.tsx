@@ -2,11 +2,11 @@ import type { JSX } from 'react';
 import LeftSidebar from "./features/layout/LeftSidebar";
 import RightRail from "./features/layout/RightRail";
 import MapContainer from "./features/map/MapContainer";
-import { useDroneWebSocket } from "./hooks/useDroneWebSocket";
+import { useSystemWebSocket } from "./hooks/useDroneWebSocket";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 function App(): JSX.Element {
-  useDroneWebSocket();
+  useSystemWebSocket();
 
   return (
     <div className="h-screen w-full overflow-hidden bg-[#0c1016] text-slate-100">

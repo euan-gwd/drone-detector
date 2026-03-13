@@ -1,9 +1,11 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import DroneStatusPanel from "./DroneStatusPanel";
 import { useDroneStore } from "../../store/droneStore";
+import { useFlightStore } from "../../store/flightStore";
+import type { FlightApproval } from "../../types/drone";
 import type { Drone } from "../../types/drone";
 
-// Panel is intentionally summary-only; detailed telemetry is covered by popup tests.
+// Panel includes summary + drone list and selected-drone flight controls.
 
 const makeDrone = (id: string, overrides?: Partial<Drone>): Drone => ({
   id,
@@ -18,10 +20,21 @@ const makeDrone = (id: string, overrides?: Partial<Drone>): Drone => ({
   ...overrides,
 });
 
+const makeApproval = (aircraftId: string, overrides?: Partial<FlightApproval>): FlightApproval => ({
+  id: "A001",
+  aircraftId,
+  status: "approved",
+  startedAt: new Date().toISOString(),
+  planStartedAt: new Date().toISOString(),
+  comments: "",
+  ...overrides,
+});
+
 describe("DroneStatusPanel", () => {
   beforeEach(() => {
     // Only drones is used by this panel; reset to a clean slate each test.
     useDroneStore.setState({ drones: {}, selectedDroneId: null, controlStatusByDrone: {} });
+    useFlightStore.setState({ approvals: [], busyAction: null });
   });
 
   it("renders the panel header", () => {
@@ -38,25 +51,89 @@ describe("DroneStatusPanel", () => {
       },
     });
     render(<DroneStatusPanel />);
-    // 2 active (online + warning), 1 offline — offline drones are excluded
-    expect(screen.getByText("2")).toBeInTheDocument();
-    expect(screen.getByText(/active drone/)).toBeInTheDocument();
+    expect(screen.getByText("Total drones:")).toBeInTheDocument();
+    expect(screen.getByText("Online:")).toBeInTheDocument();
+    expect(screen.getByText("Warning:")).toBeInTheDocument();
+    expect(screen.getByText("Offline:")).toBeInTheDocument();
   });
 
-  it("renders singular 'drone' when only one is active", () => {
+  it("shows empty state when there are no drones", () => {
+    render(<DroneStatusPanel />);
+    expect(screen.getByText("No drones available.")).toBeInTheDocument();
+  });
+
+  it("prompts for selection before showing flight controls", () => {
+    useDroneStore.setState({
+      drones: { "drn-1": makeDrone("drn-1", { id: "drn-1", name: "Drone 1", status: "offline" }) },
+    });
+
+    render(<DroneStatusPanel />);
+    expect(screen.getByText("Select a drone on the map or from the list to use flight controls.")).toBeInTheDocument();
+  });
+
+  it("shows 'Request Approval' for the selected pending drone", () => {
+    useDroneStore.setState({
+      drones: { "drn-1": makeDrone("drn-1", { id: "drn-1", name: "Drone 1", status: "offline" }) },
+      selectedDroneId: "drn-1",
+    });
+    useFlightStore.setState({ approvals: [makeApproval("drn-1", { status: "pending" })] });
+
+    render(<DroneStatusPanel />);
+    expect(screen.getByRole("button", { name: /request approval/i })).toBeInTheDocument();
+  });
+
+  it("shows 'Land' when selected drone is airborne with approved plan", () => {
     useDroneStore.setState({
       drones: { "drn-1": makeDrone("drn-1", { status: "online" }) },
+      selectedDroneId: "drn-1",
     });
+    useFlightStore.setState({ approvals: [makeApproval("drn-1", { status: "approved" })] });
+
     render(<DroneStatusPanel />);
-    expect(screen.getByText(/active drone tracked/)).toBeInTheDocument();
-    expect(screen.queryByText(/active drones tracked/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^land$/i })).not.toBeDisabled();
   });
 
-  it("shows a prompt directing the user to the map", () => {
-    // The prompt is always visible (drone selection detail is shown in the
-    // map popup, not here), so this holds regardless of selectedDroneId.
+  it("shows 'Take Off' when selected drone is landed with approved plan", () => {
+    useDroneStore.setState({
+      drones: { "drn-1": makeDrone("drn-1", { status: "offline" }) },
+      selectedDroneId: "drn-1",
+    });
+    useFlightStore.setState({ approvals: [makeApproval("drn-1", { status: "approved" })] });
+
     render(<DroneStatusPanel />);
-    expect(screen.getByText(/Select a drone/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /take off/i })).not.toBeDisabled();
+  });
+
+  it("selects a drone from the list in the side panel", () => {
+    useDroneStore.setState({
+      drones: {
+        "drn-1": makeDrone("drn-1", { id: "drn-1", name: "Alpha" }),
+        "drn-2": makeDrone("drn-2", { id: "drn-2", name: "Bravo" }),
+      },
+      selectedDroneId: null,
+    });
+
+    render(<DroneStatusPanel />);
+    fireEvent.click(screen.getByRole("button", { name: /bravo/i }));
+
+    expect(useDroneStore.getState().selectedDroneId).toBe("drn-2");
+  });
+
+  it("honors map selection by showing controls for pre-selected drone", () => {
+    useDroneStore.setState({
+      drones: {
+        "drn-1": makeDrone("drn-1", { id: "drn-1", name: "Alpha", status: "offline" }),
+        "drn-2": makeDrone("drn-2", { id: "drn-2", name: "Bravo", status: "online" }),
+      },
+      selectedDroneId: "drn-2",
+    });
+    useFlightStore.setState({ approvals: [makeApproval("drn-2", { status: "approved" })] });
+
+    render(<DroneStatusPanel />);
+
+    expect(screen.getByText("Aircraft:")).toBeInTheDocument();
+    expect(within(screen.getByText("Aircraft:").parentElement as HTMLElement).getByText("Bravo")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^land$/i })).toBeInTheDocument();
   });
 
   it("collapses the body when the header is clicked", () => {
@@ -64,14 +141,11 @@ describe("DroneStatusPanel", () => {
       drones: { "drn-1": makeDrone("drn-1") },
     });
     render(<DroneStatusPanel />);
-    // Confirm the prompt is visible before collapsing
-    expect(screen.getByText(/Select a drone/)).toBeInTheDocument();
+    expect(screen.getByText("Drone List")).toBeVisible();
 
     fireEvent.click(screen.getByText("Drone Status"));
 
-    // Both the count and the prompt should be hidden after collapse
-    expect(screen.queryByText(/active drone/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Select a drone/)).not.toBeInTheDocument();
+    expect(screen.getByText("Drone List")).not.toBeVisible();
   });
 
   it("re-expands after being collapsed", () => {
@@ -79,6 +153,6 @@ describe("DroneStatusPanel", () => {
     const header = screen.getByText("Drone Status");
     fireEvent.click(header);
     fireEvent.click(header);
-    expect(screen.getByText(/Select a drone/)).toBeInTheDocument();
+    expect(screen.getByText("No drones available.")).toBeInTheDocument();
   });
 });

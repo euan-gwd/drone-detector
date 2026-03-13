@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { DroneSocketClient } from "../services/websocketClient";
 import { useDroneStore } from "../store/droneStore";
+import { useTowerStore } from "../store/towerStore";
 import { useNotificationStore } from "../store/notificationStore";
 import { useUiStore } from "../store/uiStore";
 
@@ -8,15 +9,19 @@ import { useUiStore } from "../store/uiStore";
 const client = new DroneSocketClient();
 
 /**
- * Subscribes to the drone WebSocket feed and fans out each event to the
+ * Subscribes to the drone and tower WebSocket feed and fans out each event to the
  * relevant Zustand store action.
  *
  * Call this once at app root. Multiple mounts are safe but redundant because
  * each subscription would process every incoming event.
  */
-export const useDroneWebSocket = (): void => {
+export const useSystemWebSocket = (): void => {
   const upsertDrone = useDroneStore((state) => state.upsertDrone);
   const updateDroneStatus = useDroneStore((state) => state.updateDroneStatus);
+  const upsertTower = useTowerStore((state) => state.upsertTower);
+  const updateTowerStatus = useTowerStore((state) => state.updateTowerStatus);
+  const addDetection = useTowerStore((state) => state.addDetection);
+  const updateCameraState = useTowerStore((state) => state.updateCameraState);
   const addNotification = useNotificationStore((state) => state.addNotification);
   const setConnected = useUiStore((state) => state.setConnected);
 
@@ -29,6 +34,26 @@ export const useDroneWebSocket = (): void => {
 
       if (event.type === "drone.status") {
         updateDroneStatus(event.payload.id, event.payload.status);
+        return;
+      }
+
+      if (event.type === "tower.position") {
+        upsertTower(event.payload.tower);
+        return;
+      }
+
+      if (event.type === "tower.status") {
+        updateTowerStatus(event.payload.id, event.payload.status);
+        return;
+      }
+
+      if (event.type === "tower.detection") {
+        addDetection(event.payload.detection);
+        return;
+      }
+
+      if (event.type === "tower.camera") {
+        updateCameraState(event.payload.towerId, event.payload.camera);
         return;
       }
 
@@ -48,5 +73,8 @@ export const useDroneWebSocket = (): void => {
       unsubscribe();
       client.stop();
     };
-  }, [addNotification, setConnected, updateDroneStatus, upsertDrone]);
+  }, [addNotification, setConnected, updateDroneStatus, upsertDrone, upsertTower, updateTowerStatus, addDetection, updateCameraState]);
 };
+
+// Backward compatibility export - will be removed once components are updated
+export const useDroneWebSocket = useSystemWebSocket;

@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react';
+import { Activity, useState, type JSX } from 'react';
 import { Bell, ChevronDown, X } from 'lucide-react';
 import { useNotificationStore } from "../../store/notificationStore";
 import { notificationLevelClass } from "../../utils/statusColors";
@@ -60,7 +60,7 @@ function NotificationPanel(): JSX.Element {
         <span className="text-[11px] text-white/50">{items.length}</span>
         <ChevronDown className={`h-4 w-4 text-white/60 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && (
+      <Activity mode={open ? "visible" : "hidden"}>
         <div className="max-h-72 space-y-3 overflow-auto px-4 py-3 pr-3">
           {items.length === 0 ? (
             <p className="text-xs text-slate-400">No alerts yet.</p>
@@ -84,7 +84,7 @@ function NotificationPanel(): JSX.Element {
             ))
           )}
         </div>
-      )}
+      </Activity>
     </section>
   );
 }
