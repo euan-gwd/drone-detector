@@ -376,12 +376,27 @@ Vitest runs in `jsdom` environment with globals enabled. `src/test/setup.ts` imp
 
 ## Environment Variables
 
-Create a `.env` file (copy from `.env.example`):
+Copy `.env.example` to `.env.development` for local development (`.env` holds shared, non-secret values and is loaded in every mode):
 
 ```env
-VITE_WS_MODE=mock           # "mock" uses the local simulator
-VITE_WS_URL=ws://localhost:8080  # real backend WebSocket URL
+# .env.development - local development
+VITE_PROTOMAPS_API_KEY=your-localhost-key
+VITE_WS_MODE=mock               # "mock" uses the local simulator
+VITE_WS_URL=ws://localhost:8080 # real backend WebSocket URL
 ```
+
+### Map basemap
+
+The map uses the [Protomaps](https://protomaps.com/api) basemap (dark style) rendered as vector tiles via `ol-mapbox-style`. Protomaps API keys are **origin-restricted**, so use two keys:
+
+| Environment | File / source | Key restriction |
+|---|---|---|
+| Local dev (`npm run dev`) | `.env.development` (gitignored) | `http://localhost:*` |
+| Production (Netlify) | Netlify environment variables UI | `https://dronedetect.netlify.app` |
+
+`.env.example` is a committed template documenting all variables. `.env.development` and `.env.production` are gitignored so keys never reach the repository.
+
+### WebSocket
 
 Current default behavior uses the local simulator. `VITE_WS_URL` is documented for real-backend integration work.
 
@@ -397,7 +412,7 @@ Deploys to Netlify out of the box.
 | Publish directory | `dist` |
 | Node version | 20 |
 
-SPA routing (`/*` → `/index.html`) and security headers (`X-Frame-Options: DENY`, long-lived asset caching) are pre-configured in `netlify.toml`.
+The Protomaps basemap API key must be configured in the Netlify environment variables UI (see [Environment Variables](#environment-variables)). SPA routing (`/*` → `/index.html`) and security headers (`X-Frame-Options: DENY`, long-lived asset caching) are pre-configured in `netlify.toml`.
 
 For step-by-step instructions see [DEPLOYMENT.md](DEPLOYMENT.md).
 
