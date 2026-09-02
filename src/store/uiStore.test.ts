@@ -2,7 +2,7 @@ import { useUiStore } from "./uiStore";
 
 describe("uiStore", () => {
   beforeEach(() => {
-    useUiStore.setState({ connected: false, showRangeMarkers: false, showCameraArcs: false });
+    useUiStore.setState({ connected: false, showRangeMarkers: false, showCameraArcs: false, mapStyle: "dark" });
   });
 
   it("starts disconnected", () => {
@@ -29,5 +29,16 @@ describe("uiStore", () => {
     useUiStore.setState({ showCameraArcs: true });
     useUiStore.getState().setShowCameraArcs(false);
     expect(useUiStore.getState().showCameraArcs).toBe(false);
+  });
+
+  it("defaults to the dark map style", () => {
+    expect(useUiStore.getState().mapStyle).toBe("dark");
+  });
+
+  it("setMapStyle switches the map style", () => {
+    useUiStore.getState().setMapStyle("light");
+    expect(useUiStore.getState().mapStyle).toBe("light");
+    useUiStore.getState().setMapStyle("grayscale");
+    expect(useUiStore.getState().mapStyle).toBe("grayscale");
   });
 });

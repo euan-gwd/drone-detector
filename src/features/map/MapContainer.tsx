@@ -12,13 +12,12 @@ import { useFlightStore } from "../../store/flightStore";
 import { useUiStore } from "../../store/uiStore";
 import { syncDroneFeatures } from "./mapLayers";
 import { syncTowerFeatures, syncRangeMarkers, syncCameraFOV } from "./towerLayers";
+import { protomapsStyleUrl } from "./protomapsStyles";
+import MapStyleSwitcher from "./MapStyleSwitcher";
 import DronePopup from "./DronePopup";
 import TowerPopup from "./TowerPopup";
 
 const mapCenter = fromLonLat([-1.2577, 51.752]);
-
-// Protomaps basemap API key (https://protomaps.com/api).
-const protomapsApiKey = import.meta.env.VITE_PROTOMAPS_API_KEY as string | undefined;
 
 function MapContainer(): JSX.Element {
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -31,6 +30,8 @@ function MapContainer(): JSX.Element {
   const towerLayerSourceRef = useRef<VectorSource | null>(null);
   const rangeLayerSourceRef = useRef<VectorSource | null>(null);
   const fovLayerSourceRef = useRef<VectorSource | null>(null);
+  // Track the current basemap layer so it can be swapped when the style changes.
+  const baseLayerRef = useRef<MapboxVectorLayer | null>(null);
 
   if (!droneLayerSourceRef.current) {
     droneLayerSourceRef.current = new VectorSource();
@@ -68,6 +69,7 @@ function MapContainer(): JSX.Element {
   // UI state
   const showRangeMarkers = useUiStore((state) => state.showRangeMarkers);
   const showCameraArcs = useUiStore((state) => state.showCameraArcs);
+  const mapStyle = useUiStore((state) => state.mapStyle);
 
   const [, startTransition] = useTransition();
 
@@ -100,11 +102,8 @@ function MapContainer(): JSX.Element {
       return;
     }
 
-    // Protomaps serves vector tiles, rendered via its hosted dark style.
-    const baseLayer = new MapboxVectorLayer({
-      styleUrl: `https://api.protomaps.com/styles/v5/dark/en.json?key=${protomapsApiKey}`
-    });
-
+    // Base layer is created/managed by the mapStyle effect below so the
+    // Protomaps style can be swapped at runtime via the floating switcher.
     const droneLayer = new VectorLayer({
       source: droneLayerSource
     });
@@ -123,7 +122,7 @@ function MapContainer(): JSX.Element {
 
     const map = new Map({
       target: mapRef.current,
-      layers: [baseLayer, rangeLayer, fovLayer, droneLayer, towerLayer], // Layer order: base, ranges, FOV, drones, towers (towers on top)
+      layers: [rangeLayer, fovLayer, droneLayer, towerLayer], // Layer order: base (added by style effect), ranges, FOV, drones, towers (towers on top)
       view: new View({
         center: mapCenter,
         zoom: 11
@@ -189,6 +188,25 @@ function MapContainer(): JSX.Element {
     };
   }, [droneLayerSource, towerLayerSource, rangeLayerSource, fovLayerSource, selectDrone, selectTower]);
 
+  // Swap the Protomaps basemap when the selected style changes. The layer is
+  // always inserted at index 0 to keep it below the range/FOV/drone/tower layers.
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) {
+      return;
+    }
+
+    if (baseLayerRef.current) {
+      map.removeLayer(baseLayerRef.current);
+    }
+
+    const baseLayer = new MapboxVectorLayer({
+      styleUrl: protomapsStyleUrl(mapStyle)
+    });
+    baseLayerRef.current = baseLayer;
+    map.getLayers().insertAt(0, baseLayer);
+  }, [mapStyle]);
+
   // Sync drone features
   useEffect(() => {
     syncDroneFeatures(droneLayerSource, drones, selectedDroneId, approvalStatusByDrone);
@@ -230,6 +248,7 @@ function MapContainer(): JSX.Element {
   return (
     <div className="relative h-full w-full">
       <div ref={mapRef} className="h-full w-full" aria-label="Live drone and tower map" />
+      <MapStyleSwitcher />
       <div ref={popupContainerRef}>
         {selectedDrone && (
           <DronePopup
