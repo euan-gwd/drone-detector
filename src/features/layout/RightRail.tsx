@@ -12,6 +12,9 @@ function RightRail(): JSX.Element {
   return (
     <aside className="flex h-[48vh] w-full flex-col bg-surface/85 backdrop-blur-md lg:h-full lg:w-[320px] lg:max-w-[320px]">
       <div className="flex-1 space-y-4 overflow-auto p-4">
+        <h1 className="text-center text-lg font-semibold tracking-wide text-slate-100">
+          Drone Detector
+        </h1>
         <div className="rounded-lg border border-slate-600 bg-surfaceAlt px-3 py-2 text-xs text-slate-200">
           System Status:{" "}
           <span className={connected ? "text-success" : "text-danger"}>

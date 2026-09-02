@@ -2,10 +2,9 @@ import { useEffect, useRef, useTransition, type JSX } from "react";
 import Map from "ol/Map";
 import Overlay from "ol/Overlay";
 import View from "ol/View";
-import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
-import XYZ from "ol/source/XYZ";
+import { MapboxVectorLayer } from "ol-mapbox-style";
 import { fromLonLat } from "ol/proj";
 import { useDroneStore } from "../../store/droneStore";
 import { useTowerStore } from "../../store/towerStore";
@@ -17,6 +16,9 @@ import DronePopup from "./DronePopup";
 import TowerPopup from "./TowerPopup";
 
 const mapCenter = fromLonLat([-1.2577, 51.752]);
+
+// Protomaps basemap API key (https://protomaps.com/api).
+const protomapsApiKey = import.meta.env.VITE_PROTOMAPS_API_KEY as string | undefined;
 
 function MapContainer(): JSX.Element {
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -98,10 +100,9 @@ function MapContainer(): JSX.Element {
       return;
     }
 
-    const baseLayer = new TileLayer({
-      source: new XYZ({
-        url: "https://{a-d}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
-      })
+    // Protomaps serves vector tiles, rendered via its hosted dark style.
+    const baseLayer = new MapboxVectorLayer({
+      styleUrl: `https://api.protomaps.com/styles/v5/dark/en.json?key=${protomapsApiKey}`
     });
 
     const droneLayer = new VectorLayer({

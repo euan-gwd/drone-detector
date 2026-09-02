@@ -33,12 +33,30 @@ If the production build succeeds, Vite will output the static site into `dist/`.
 
 ## Environment Variables
 
-The app currently supports these client-side environment variables:
+The app supports these client-side environment variables:
 
 ```bash
+VITE_PROTOMAPS_API_KEY=...       # Protomaps basemap API key (origin-restricted)
 VITE_WS_MODE=mock
 VITE_WS_URL=ws://localhost:8080
 ```
+
+### Protomaps basemap API key
+
+The map uses the [Protomaps](https://protomaps.com/api) dark basemap. Protomaps API keys are **origin-restricted**, so create two keys in your Protomaps dashboard:
+
+| Environment | Where the key lives | Restrict origin to |
+|---|---|---|
+| Local development | `.env.development` (gitignored) | `http://localhost:5173` and `http://localhost:4173` |
+| Production (Netlify) | Netlify environment variables UI | `https://dronedetect.netlify.app` |
+
+`.env.development` and `.env.production` are gitignored; `.env.example` is the committed template.
+
+To configure the production key in Netlify:
+
+1. Go to **Site configuration → Environment variables**.
+2. Add `VITE_PROTOMAPS_API_KEY` with the production key, scoped to Production (and Deploy Previews) contexts.
+3. Trigger a new deploy — Vite inlines the key at build time, so existing deploys won't pick it up until rebuilt.
 
 ### Recommended Netlify setup
 
@@ -54,7 +72,7 @@ VITE_WS_MODE=mock
 
 - Only variables prefixed with `VITE_` are exposed to the browser.
 - Changing environment variables requires a rebuild and redeploy.
-- Do not put secrets in `VITE_` variables because they are bundled into client code.
+- Do not put secrets in `VITE_` variables because they are bundled into client code. (The Protomaps key is an acceptable exception only because Protomaps enforces origin restrictions on its API keys.)
 
 ## Netlify Configuration In This Repo
 
@@ -170,11 +188,21 @@ If you switch away from mock mode:
 - Confirm the backend supports `wss://` in production when the site is served over HTTPS
 - Check browser console errors for mixed-content or connection failures
 
+### Map is blank or tiles fail to load
+
+The map depends on the Protomaps basemap API. If it is blank:
+
+- Open the browser dev tools network tab and look for failed requests to `api.protomaps.com`
+- A `403 Invalid origin for API key` means the key's allowed origins don't include the site you're viewing — check the key restrictions in your Protomaps dashboard
+- A `404` on the style URL means an outdated URL format; styles require a language code (`/styles/v5/dark/en.json`)
+- Verify `VITE_PROTOMAPS_API_KEY` is set for the deploy and that the deploy happened after the variable was added
+
 ## Deployment Checklist
 
 - Tests pass locally
 - Production build passes locally
 - `netlify.toml` is committed
-- Required `VITE_` variables are configured in Netlify
+- `VITE_PROTOMAPS_API_KEY` is configured in Netlify with a key restricted to the production domain
+- `VITE_WS_MODE` / other `VITE_` variables are configured in Netlify
 - Production deploy completes successfully
 - Smoke test passes on the live URL

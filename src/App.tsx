@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
-import LeftSidebar from "./features/layout/LeftSidebar";
+// LeftSidebar is hidden pending production readiness; re-enable once complete.
+// import LeftSidebar from "./features/layout/LeftSidebar";
 import RightRail from "./features/layout/RightRail";
 import MapContainer from "./features/map/MapContainer";
 import { useSystemWebSocket } from "./hooks/useDroneWebSocket";
@@ -11,7 +12,8 @@ function App(): JSX.Element {
   return (
     <div className="h-screen w-full overflow-hidden bg-[#0c1016] text-slate-100">
       <div className="flex h-full flex-col lg:flex-row">
-        <LeftSidebar />
+        {/* LeftSidebar hidden - not ready for production yet */}
+        {/* <LeftSidebar /> */}
         <main className="relative min-h-[52vh] min-w-0 flex-1 lg:min-h-0">
           <ErrorBoundary>
             <MapContainer />

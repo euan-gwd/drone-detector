@@ -9,6 +9,14 @@
   [build.environment]
     NODE_VERSION = "20"
 
+# Production API keys are set via Netlify's environment variables UI
+# (Site configuration > Environment variables) so they are never committed
+# to the repository. Required variables:
+#   VITE_PROTOMAPS_API_KEY  - Protomaps key restricted to https://dronedetect.netlify.app
+#
+# Local development uses .env.development (gitignored) - see .env.example.
+
+
 # SPA redirect rules - redirect all routes to index.html
 [[redirects]]
   from = "/*"
